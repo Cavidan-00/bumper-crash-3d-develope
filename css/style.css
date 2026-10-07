@@ -261,3 +261,128 @@ h1 { color: #fff; font-size: 34px; margin: 0; text-shadow: 0 0 20px #6366f1; tex
     text-shadow: 0 0 30px rgba(245, 158, 11, 0.8); margin: 0; text-align: center;
 }
 .victory-buttons { display: flex; gap: 15px; margin-top: 15px; }
+
+/* ============================================================
+   MOBILE LANDSCAPE — telefonda yatay rejim üçün sıx layout
+   ============================================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+
+    .overlay-screen {
+        padding: 6px 10px;
+    }
+
+    h1 {
+        font-size: 18px !important;
+        margin: 0 0 6px 0 !important;
+    }
+
+    /* ---- GAME SETUP ---- */
+    #setup-menu .map-select-box {
+        margin: 6px 0 !important;
+        padding: 8px 12px;
+        max-width: 90% !important;
+    }
+
+    #setup-menu .section-title {
+        font-size: 9px;
+        margin: 5px 0 3px 0;
+    }
+
+    #setup-menu .icon-card {
+        height: 38px !important;
+        padding: 2px;
+    }
+    #setup-menu .icon-card .icon-img { max-height: 18px; }
+    #setup-menu .icon-card .label { font-size: 9px; }
+    #setup-menu .icon-card .emoji { font-size: 16px; }
+
+    #setup-menu .btn {
+        padding: 7px 18px !important;
+        font-size: 12px !important;
+    }
+
+    /* ---- CUSTOMIZE ---- */
+    #custom-menu .custom-wrapper {
+        gap: 8px;
+        margin: 4px 0;
+        padding: 0;
+    }
+
+    #custom-menu .player-box {
+        padding: 6px 8px;
+        max-height: calc(100vh - 100px);
+        width: 46%;
+    }
+    #custom-menu .player-box h2 { font-size: 11px !important; margin: 0 0 4px 0 !important; }
+
+    #custom-menu .section-title { font-size: 8px; margin: 3px 0 2px 0; }
+
+    #custom-menu .icon-card { height: 42px !important; }
+    #custom-menu .icon-card .emoji { font-size: 16px; }
+    #custom-menu .icon-card .label { font-size: 7px; }
+
+    #custom-menu .btn {
+        padding: 7px 18px !important;
+        font-size: 12px !important;
+    }
+
+    /* ---- MAIN MENU ---- */
+    #main-menu {
+        gap: 8px !important;
+    }
+    #main-menu h1 { font-size: 20px !important; margin: 0 !important; }
+    #main-menu #player-level-badge { padding: 4px 10px; min-width: 160px; }
+    #main-menu .btn { padding: 7px 18px !important; font-size: 12px !important; }
+    #main-menu .menu-row { gap: 6px; margin-top: 2px; }
+    #main-menu .icon-sub-btn { padding: 6px 10px; font-size: 10px; }
+
+    /* ---- HUD ---- */
+    #hud { top: 4px; }
+    .player-card { padding: 5px 10px; min-width: 110px; border-radius: 10px; }
+    .score { font-size: 20px; margin: 0; }
+    .controls { font-size: 9px; }
+    .cooldown-bar { height: 4px; margin-top: 4px; }
+
+    /* ---- In-game controls ---- */
+    #in-game-controls { top: 4px; right: 4px; gap: 5px; }
+    .icon-toggle-btn { width: 32px; height: 32px; font-size: 13px; }
+
+    /* ---- Joysticks ---- */
+    .mobile-joystick { width: 96px; height: 96px; bottom: 12px; }
+    .joystick-thumb { width: 38px; height: 38px; }
+    #joystick-p1 { left: 12px; }
+    #joystick-p2 { right: 12px; }
+
+    .mobile-dash-btn {
+        width: 56px;
+        height: 56px;
+        bottom: 32px;
+        font-size: 9px;
+    }
+    #dash-btn-p1 { left: 112px; }
+    #dash-btn-p2 { right: 112px; }
+
+    /* ---- Victory ---- */
+    #victory-screen { gap: 8px !important; padding: 10px !important; }
+    #victory-screen h1 { font-size: 16px !important; }
+    #victory-screen .winner-title { font-size: 26px !important; }
+    #victory-screen .btn { padding: 7px 16px !important; font-size: 12px !important; }
+    #victory-screen .victory-buttons { gap: 8px; margin-top: 4px; }
+
+    /* ---- Pause / Settings / Shop ---- */
+    #pause-menu { gap: 10px; padding: 20px !important; }
+    #pause-menu .btn { padding: 8px 18px !important; font-size: 13px !important; }
+
+    #settings-menu .map-select-box {
+        width: 260px !important;
+        padding: 10px 14px;
+    }
+
+    #shop-menu h1 { font-size: 18px !important; margin: 4px 0 !important; }
+    #shop-menu .map-select-box { max-height: calc(100vh - 100px) !important; padding: 8px 12px; }
+    #shop-menu .section-title { font-size: 9px; margin: 4px 0 3px 0; }
+    #shop-menu .icon-card { height: 58px !important; }
+    #shop-menu .icon-card .emoji { font-size: 18px; }
+    #shop-menu .icon-card .label { font-size: 8px; }
+    #shop-menu .btn { padding: 7px 18px !important; font-size: 12px !important; }
+}
