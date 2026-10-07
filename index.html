@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content">
+    <title>Bumper Crash 3D</title>
+
+    <!-- CrazyGames SDK v3 - must load before the game's own script -->
+    <script src="https://sdk.crazygames.com/crazygames-sdk-v3.js"></script>
+
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Audio tracks -->
+    <audio id="bgm-menu" src="assets/sounds/main-menu-loop.mp3" loop preload="auto"></audio>
+    <audio id="bgm-game" src="assets/sounds/game-sound.mp3" loop preload="auto"></audio>
+    <audio id="bgm-over" src="assets/sounds/game-over.mp3" preload="auto"></audio>
+
+    <!-- 1. MAIN MENU -->
+    <div id="main-menu" class="overlay-screen" style="justify-content: center; gap: 25px;">
+        <h1>Bumper Crash 3D</h1>
+        <div id="player-level-badge" style="display: flex; flex-direction: column; gap: 5px; background: #1e293b; border: 2px solid #6366f1; border-radius: 12px; padding: 8px 16px; min-width: 220px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span id="player-level-text" style="font-weight: 800; color: #a5b4fc; font-size: 14px;">LVL 1</span>
+                <span id="player-level-xp-text" style="font-size: 11px; color: #94a3b8;">0 / 50 XP</span>
+            </div>
+            <div style="width: 100%; height: 8px; background: #0f172a; border-radius: 4px; overflow: hidden;">
+                <div id="player-level-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.4s ease;"></div>
+            </div>
+            <div id="player-gold-text" style="text-align: center; font-size: 12px; color: #facc15; font-weight: 700; margin-top: 2px;">🪙 0</div>
+        </div>
+        <button class="btn" id="btn-watch-ad-gold" style="display: none; background: linear-gradient(135deg, #f59e0b, #d97706); font-size: 13px; padding: 10px 22px; margin-top: -14px;">📺 Watch Ad for 30 🪙</button>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 14px;">
+            <button class="btn" id="btn-play" data-i18n="menu.startGame">START GAME</button>
+            <div class="menu-row">
+                <button class="icon-sub-btn" id="btn-lang" title="Language">
+                    <div class="flag-icon-box">🇺🇸🇬🇧</div>
+                    <span data-i18n="menu.lang">LANG</span>
+                </button>
+                <button class="icon-sub-btn" id="btn-shop" title="Shop">
+                    <span>🛍️</span>
+                    <span data-i18n="menu.shop">SHOP</span>
+                </button>
+                <button class="icon-sub-btn" id="btn-settings" title="Settings">
+                    <span>⚙️</span>
+                    <span data-i18n="menu.settings">SETTINGS</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. GAME SETUP MENU -->
+    <div id="setup-menu" class="overlay-screen no-blur hidden">
+        <h1 data-i18n="setup.title">GAME SETUP</h1>
+
+        <div class="map-select-box" style="margin: auto 0;">
+            <div class="section-title" style="margin-top: 0;" data-i18n="setup.gameMode">GAME MODE</div>
+            <div class="option-grid" id="mode-grid" style="grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px;">
+                <div class="icon-card active" data-value="2p" style="height: 64px;">
+                    <img src="assets/icons/2players.png" class="icon-img" alt="2 Players">
+                    <span class="label" data-i18n="setup.mode2p">2 Players</span>
+                </div>
+                <div class="icon-card" data-value="ai" style="height: 64px;">
+                    <img src="assets/icons/cpu.png" class="icon-img" alt="CPU">
+                    <span class="label" data-i18n="setup.modeAi">Vs CPU</span>
+                </div>
+            </div>
+
+            <div id="difficulty-section" style="display: none;">
+                <div class="section-title" data-i18n="setup.aiDifficulty">AI DIFFICULTY</div>
+                <div class="option-grid" id="difficulty-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;">
+                    <div class="icon-card" data-value="easy" style="height: 56px;">
+                        <span class="emoji">🙂</span>
+                        <span class="label" data-i18n="setup.diffEasy">Easy</span>
+                    </div>
+                    <div class="icon-card" data-value="normal" style="height: 56px;">
+                        <span class="emoji">😐</span>
+                        <span class="label" data-i18n="setup.diffNormal">Normal</span>
+                    </div>
+                    <div class="icon-card active" data-value="hard" style="height: 56px;">
+                        <span class="emoji">😈</span>
+                        <span class="label" data-i18n="setup.diffHard">Hard</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title" data-i18n="setup.arenaType">ARENA TYPE</div>
+            <div class="option-grid" id="map-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 12px;">
+                <div class="icon-card active" data-value="circle" style="height: 64px;">
+                    <img src="assets/icons/circle.png" class="icon-img" alt="Circle">
+                    <span class="label" data-i18n="setup.arenaCircle">Circle</span>
+                </div>
+                <div class="icon-card" data-value="square" style="height: 64px;">
+                    <img src="assets/icons/square.png" class="icon-img" alt="Square">
+                    <span class="label" data-i18n="setup.arenaSquare">Square</span>
+                </div>
+                <div class="icon-card" data-value="bowl" style="height: 64px;">
+                    <img src="assets/icons/bowl-ramp.png" class="icon-img" alt="Ramp">
+                    <span class="label" data-i18n="setup.arenaRamp">Ramp</span>
+                </div>
+            </div>
+
+            <div class="section-title" data-i18n="setup.winningScore">WINNING SCORE</div>
+            <div class="option-grid" id="score-grid" style="grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                <div class="icon-card" data-value="5"><span class="label" style="font-size: 12px;" data-i18n="setup.pts5">5 Pts</span></div>
+                <div class="icon-card active" data-value="10"><span class="label" style="font-size: 12px;" data-i18n="setup.pts10">10 Pts</span></div>
+                <div class="icon-card" data-value="15"><span class="label" style="font-size: 12px;" data-i18n="setup.pts15">15 Pts</span></div>
+                <div class="icon-card" data-value="20"><span class="label" style="font-size: 12px;" data-i18n="setup.pts20">20 Pts</span></div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <button class="btn" id="btn-back-main" style="background: linear-gradient(135deg, #64748b, #475569);" data-i18n="setup.mainMenu">Main Menu</button>
+            <button class="btn" id="btn-next" data-i18n="setup.next">NEXT ➔</button>
+        </div>
+    </div>
+
+    <!-- 3. CHARACTER CUSTOMIZATION MENU -->
+    <div id="custom-menu" class="overlay-screen no-blur hidden">
+        <h1 data-i18n="custom.title">CHARACTER CUSTOMIZATION</h1>
+        <div id="custom-gold-text" style="text-align: center; font-size: 14px; font-weight: 800; color: #facc15; margin: 2px 0 10px 0;">🪙 0</div>
+
+        <div class="custom-wrapper">
+            <div class="player-box" style="border-color: #3b82f6;">
+                <h2 style="color: #60a5fa; margin: 0 0 6px 0; font-size: 15px; text-align: center;" data-i18n="custom.player1">PLAYER 1 (BLUE)</h2>
+                <div class="section-title" data-i18n="custom.selectHat">Select Hat</div>
+                <div class="option-grid" id="p1-hat-grid" style="grid-template-columns: repeat(5, 1fr);"></div>
+                <div class="section-title" data-i18n="custom.selectGlassesFace">Select Glasses / Face</div>
+                <div class="option-grid" id="p1-glasses-grid" style="grid-template-columns: repeat(5, 1fr);"></div>
+            </div>
+
+            <div class="player-box" id="p2-box" style="border-color: #ef4444;">
+                <h2 id="p2-title" style="color: #f87171; margin: 0 0 6px 0; font-size: 15px; text-align: center;">PLAYER 2 (RED)</h2>
+                <div id="p2-custom-controls">
+                    <div class="section-title" data-i18n="custom.selectHat">Select Hat</div>
+                    <div class="option-grid" id="p2-hat-grid" style="grid-template-columns: repeat(5, 1fr);"></div>
+                    <div class="section-title" data-i18n="custom.selectGlasses">Select Glasses</div>
+                    <div class="option-grid" id="p2-glasses-grid" style="grid-template-columns: repeat(5, 1fr);"></div>
+                </div>
+                <div id="ai-random-box" class="ai-random-box" style="display: none;" data-i18n="custom.aiRandomMsg">
+                    🎲 Random Cosmetics Auto-Assigned!
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+            <button class="btn" id="btn-back" style="background: linear-gradient(135deg, #64748b, #475569);" data-i18n="custom.back">⬅ BACK</button>
+            <button class="btn" id="btn-start" style="background: linear-gradient(135deg, #10b981, #059669);" data-i18n="custom.fight">FIGHT!</button>
+        </div>
+    </div>
+
+    <!-- 4. HUD -->
+    <div id="hud" class="hidden">
+        <div class="player-card" style="border-color: #3b82f6;">
+            <div style="color: #60a5fa; font-weight: bold;" data-i18n="hud.player1">PLAYER 1</div>
+            <div class="score" id="s1">0</div>
+            <div class="controls" data-i18n="hud.controlsP1">WASD | Dash: Space</div>
+            <div class="cooldown-bar"><div id="p1-dash" class="cooldown-fill"></div></div>
+        </div>
+        <div class="player-card" id="p2-hud-card" style="border-color: #ef4444;">
+            <div id="p2-hud-name" style="color: #f87171; font-weight: bold;">PLAYER 2</div>
+            <div class="score" id="s2">0</div>
+            <div class="controls" id="p2-controls-text">Arrows | Dash: Enter</div>
+            <div class="cooldown-bar"><div id="p2-dash" class="cooldown-fill"></div></div>
+        </div>
+    </div>
+
+    <!-- Language picker modal -->
+    <div id="lang-picker" class="hidden" style="position: fixed; inset: 0; z-index: 150; background: rgba(9, 13, 22, 0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center;">
+        <div style="background: rgba(15, 23, 42, 0.96); border: 2px solid rgba(99, 102, 241, 0.5); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 10px; min-width: 240px; box-shadow: 0 10px 30px rgba(0,0,0,0.6);">
+            <div class="section-title" style="margin: 0 0 6px 0; text-align: center;" data-i18n="menu.selectLanguage">SELECT LANGUAGE</div>
+            <button class="btn lang-option" data-lang="en" style="background: linear-gradient(135deg, #6366f1, #4f46e5); display: flex; align-items: center; gap: 10px; justify-content: center;">🇺🇸 English</button>
+            <button class="btn lang-option" data-lang="es" style="background: linear-gradient(135deg, #6366f1, #4f46e5); display: flex; align-items: center; gap: 10px; justify-content: center;">🇪🇸 Español</button>
+            <button class="btn lang-option" data-lang="tr" style="background: linear-gradient(135deg, #6366f1, #4f46e5); display: flex; align-items: center; gap: 10px; justify-content: center;">🇹🇷 Türkçe</button>
+            <button class="btn lang-option" data-lang="pt" style="background: linear-gradient(135deg, #6366f1, #4f46e5); display: flex; align-items: center; gap: 10px; justify-content: center;">🇵🇹🇧🇷 Português</button>
+            <button class="btn" id="btn-lang-close" style="background: linear-gradient(135deg, #64748b, #475569); margin-top: 6px;" data-i18n="settings.back">⬅ BACK</button>
+        </div>
+    </div>
+
+    <!-- Quick-access controls -->
+    <div id="in-game-controls">
+        <button class="icon-toggle-btn" id="btn-toggle-sfx" title="Mute Sound Effects" data-i18n-title="ctrl.muteSfx">🔊</button>
+        <button class="icon-toggle-btn" id="btn-toggle-music" title="Mute Music" data-i18n-title="ctrl.muteMusic">🎵</button>
+        <button class="icon-toggle-btn" id="btn-mobile-pause" title="Pause" style="display: none;" data-i18n-title="ctrl.pause">⏸️</button>
+    </div>
+
+    <!-- Mobile controls -->
+    <div id="mobile-controls" style="display: none;">
+        <div class="mobile-joystick" id="joystick-p1">
+            <div class="joystick-base"></div>
+            <div class="joystick-thumb"></div>
+        </div>
+        <button class="mobile-dash-btn" id="dash-btn-p1" data-i18n="mobile.dash">DASH</button>
+        <div class="mobile-joystick" id="joystick-p2">
+            <div class="joystick-base"></div>
+            <div class="joystick-thumb"></div>
+        </div>
+        <button class="mobile-dash-btn" id="dash-btn-p2" data-i18n="mobile.dash">DASH</button>
+    </div>
+
+    <!-- Rotate prompt -->
+    <div id="rotate-prompt" style="display: none; position: fixed; inset: 0; z-index: 200; background: rgba(9, 13, 22, 0.97); flex-direction: column; align-items: center; justify-content: center; text-align: center; color: white; padding: 20px;">
+        <div style="font-size: 56px; margin-bottom: 16px; animation: rotateHint 1.6s ease-in-out infinite;">📱</div>
+        <div style="font-size: 18px; font-weight: 800; margin-bottom: 6px;" data-i18n="mobile.rotateTitle">Please Rotate Your Device</div>
+        <div style="font-size: 13px; opacity: 0.7;" data-i18n="mobile.rotateSubtitle">Bumper Crash 3D plays best in landscape mode</div>
+    </div>
+
+    <!-- 5. VICTORY SCREEN -->
+    <div id="victory-screen" class="overlay-screen hidden">
+        <h1 style="color: #e0e7ff; font-size: 28px;" data-i18n="victory.matchOver">MATCH OVER!</h1>
+        <h2 id="winner-text" class="winner-title">PLAYER 1 WINS!</h2>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px 0 8px;">
+            <div id="victory-levelup-banner" style="display: none; font-weight: 900; color: #facc15; font-size: 16px; text-shadow: 0 0 10px rgba(250, 204, 21, 0.8);">🎉 LEVEL UP! You are now Level <span id="victory-new-level"></span>!</div>
+            <div style="display: flex; gap: 16px;">
+                <div style="font-size: 13px; color: #a5b4fc; font-weight: 700;">+<span id="victory-xp-gained">0</span> XP</div>
+                <div style="font-size: 13px; color: #facc15; font-weight: 700;">+<span id="victory-gold-gained">0</span> 🪙</div>
+            </div>
+            <div style="width: 220px; height: 8px; background: #0f172a; border-radius: 4px; overflow: hidden; border: 1px solid #334155;">
+                <div id="victory-level-fill" style="height: 100%; width: 0%; background: linear-gradient(90deg, #6366f1, #a855f7); transition: width 0.6s ease;"></div>
+            </div>
+            <div id="victory-level-text" style="font-size: 11px; color: #94a3b8;">LVL 1 · 0 / 50 XP</div>
+        </div>
+        <div id="victory-ad-options" style="display: flex; gap: 10px; margin-bottom: 4px;">
+            <button class="btn" id="btn-double-gold" style="background: linear-gradient(135deg, #f59e0b, #d97706); font-size: 12px; padding: 9px 16px;">📺 2x GOLD</button>
+            <button class="btn" id="btn-double-xp" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); font-size: 12px; padding: 9px 16px;">📺 2x XP</button>
+        </div>
+        <div class="victory-buttons">
+            <button class="btn" id="btn-rematch" style="background: linear-gradient(135deg, #10b981, #059669);" data-i18n="victory.rematch">REMATCH</button>
+            <button class="btn" id="btn-main-menu" style="background: linear-gradient(135deg, #64748b, #475569);" data-i18n="victory.mainMenu">MAIN MENU</button>
+        </div>
+    </div>
+
+    <!-- 6. PAUSE MENU -->
+    <div id="pause-menu" class="overlay-screen hidden">
+        <h1 data-i18n="pause.title">GAME PAUSED</h1>
+        <div style="display: flex; flex-direction: column; gap: 14px; width: 240px;">
+            <button class="btn" id="btn-resume" style="background: linear-gradient(135deg, #10b981, #059669);" data-i18n="pause.resume">RESUME</button>
+            <button class="btn" id="btn-pause-settings" style="background: linear-gradient(135deg, #8b5cf6, #6d28d9);" data-i18n="pause.settings">SETTINGS</button>
+            <button class="btn" id="btn-pause-main-menu" style="background: linear-gradient(135deg, #64748b, #475569);" data-i18n="pause.mainMenu">MAIN MENU</button>
+        </div>
+    </div>
+
+    <!-- 7. SETTINGS MENU -->
+    <div id="settings-menu" class="overlay-screen hidden">
+        <h1 data-i18n="settings.title">SETTINGS</h1>
+        <div class="map-select-box" style="margin: auto 0; display: flex; flex-direction: column; gap: 20px; width: 320px;">
+            <div>
+                <div class="section-title" style="margin-top: 0;" data-i18n="settings.musicVolume">MUSIC VOLUME</div>
+                <input type="range" id="slider-bgm" min="0" max="100" value="50" style="width: 100%; cursor: pointer;">
+            </div>
+            <div>
+                <div class="section-title" data-i18n="settings.sfxVolume">SFX VOLUME</div>
+                <input type="range" id="slider-sfx" min="0" max="100" value="80" style="width: 100%; cursor: pointer;">
+            </div>
+            <div style="border-top: 1px solid rgba(255,255,255,0.12); padding-top: 16px;">
+                <div class="section-title" style="color: #f87171;" data-i18n="settings.dangerZone">DANGER ZONE</div>
+                <button class="btn-red" id="btn-reset-progress" style="background: linear-gradient(135deg, #dc2626, #991b1b); width: 100%; font-size: 13px; padding: 10px 20px;" data-i18n="settings.resetProgress">
+                    RESET PROGRESS
+                </button>
+                <div style="font-size: 10px; opacity: 0.6; margin-top: 8px; text-align: center; color: white;" data-i18n="settings.resetWarning">Wipes your level, XP, gold and every unlocked item. Cannot be undone.</div>
+            </div>
+        </div>
+        <button class="btn" id="btn-settings-back" style="background: linear-gradient(135deg, #64748b, #475569);" data-i18n="settings.back">⬅ BACK</button>
+    </div>
+
+    <!-- 8. MARKET / SHOP MENU -->
+    <div id="shop-menu" class="overlay-screen no-blur hidden">
+        <h1 data-i18n="shop.title">🛍️ MARKET</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; max-width: 460px; margin-bottom: 8px;">
+            <div class="section-title" style="margin: 0;" data-i18n="shop.yourBalance">YOUR BALANCE</div>
+            <div id="shop-coin-balance" style="font-weight: 800; font-size: 18px; color: #facc15;">🪙 0</div>
+        </div>
+        <div class="map-select-box" style="margin: 0 0 auto 0; width: 100%; max-width: 500px; max-height: 590px; overflow-y: auto;">
+            <div class="section-title" style="margin-top: 0;"><span data-i18n="shop.cosmeticEffects">COSMETIC EFFECTS</span> <span style="opacity: 0.6; font-weight: 500; text-transform: none;" data-i18n="shop.tapHint">(tap to preview, tap again to buy)</span></div>
+            <div style="font-size: 11px; font-weight: 800; color: #60a5fa; text-align: left; margin: 6px 0 4px 2px;" data-i18n="shop.player1">PLAYER 1</div>
+            <div class="option-grid" id="shop-grid-p1" style="grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 12px;"></div>
+            <div style="font-size: 11px; font-weight: 800; color: #f87171; text-align: left; margin: 6px 0 4px 2px;" data-i18n="shop.player2">PLAYER 2</div>
+            <div class="option-grid" id="shop-grid-p2" style="grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;"></div>
+            <div class="section-title"><span data-i18n="shop.hats">HATS</span> <span style="opacity: 0.6; font-weight: 500; text-transform: none;" data-i18n="shop.unlockHint">(unlock by leveling up)</span></div>
+            <div class="option-grid" id="shop-hat-grid" style="grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 16px;"></div>
+            <div class="section-title"><span data-i18n="shop.glasses">GLASSES</span> <span style="opacity: 0.6; font-weight: 500; text-transform: none;" data-i18n="shop.unlockHint">(unlock by leveling up)</span></div>
+            <div class="option-grid" id="shop-glasses-grid" style="grid-template-columns: repeat(4, 1fr); gap: 8px;"></div>
+        </div>
+        <button class="btn" id="btn-shop-back" style="background: linear-gradient(135deg, #64748b, #475569); margin-top: 12px;" data-i18n="shop.back">⬅ BACK</button>
+    </div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "./vendor/three.module.js"
+            }
+        }
+    </script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
