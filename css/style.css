@@ -242,15 +242,6 @@ h1 { color: #fff; font-size: 34px; margin: 0; text-shadow: 0 0 20px #6366f1; tex
 .icon-toggle-btn.muted { background: rgba(239, 68, 68, 0.28); border-color: rgba(248, 113, 113, 0.6); }
 .icon-toggle-btn:active { transform: scale(0.92); }
 
-@media (max-height: 500px) {
-    .overlay-screen { padding: 8px; }
-    h1 { font-size: 22px; }
-    .btn { padding: 8px 20px; font-size: 13px; }
-    .player-box { max-height: min(495px, 78vh); }
-    #shop-menu .map-select-box { max-height: min(590px, 62vh) !important; }
-    #player-level-badge { padding: 5px 12px; min-width: 180px; }
-    .custom-wrapper { gap: 10px; }
-}
 
 #victory-screen {
     justify-content: center; gap: 20px;
@@ -261,3 +252,244 @@ h1 { color: #fff; font-size: 34px; margin: 0; text-shadow: 0 0 20px #6366f1; tex
     text-shadow: 0 0 30px rgba(245, 158, 11, 0.8); margin: 0; text-align: center;
 }
 .victory-buttons { display: flex; gap: 15px; margin-top: 15px; }
+/* ============================================================
+   MOBILE LANDSCAPE — telefonda yatay rejimdə sıx layout
+   ============================================================ */
+@media (max-height: 500px) and (orientation: landscape) {
+
+    /* Overlay-ləri sıx, content-i mərkəzlə */
+    .overlay-screen {
+        padding: 6px 10px;
+        justify-content: flex-start;
+    }
+
+    h1 {
+        font-size: 18px !important;
+        margin-bottom: 4px !important;
+    }
+
+    /* SETUP ekranı xüsusi */
+    #setup-menu {
+        gap: 4px;
+    }
+
+    #setup-menu .map-select-box {
+        margin: 0 !important;
+        padding: 10px 14px;
+        max-height: calc(100vh - 90px);
+        overflow-y: auto;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Grid-ləri kiçilt */
+    #setup-menu .section-title {
+        font-size: 9px;
+        margin: 6px 0 3px 0;
+    }
+
+    #setup-menu .icon-card {
+        height: 40px !important;
+        padding: 3px;
+    }
+
+    #setup-menu .icon-card .icon-img {
+        max-height: 20px;
+    }
+
+    #setup-menu .icon-card .label {
+        font-size: 9px;
+    }
+
+    #setup-menu .icon-card .emoji {
+        font-size: 16px;
+    }
+
+    /* Alt düymələr (Main Menu / NEXT) */
+    #setup-menu > div:last-child {
+        margin-top: 4px;
+        gap: 10px;
+    }
+
+    #setup-menu .btn {
+        padding: 8px 20px !important;
+        font-size: 13px !important;
+    }
+
+    /* CUSTOMIZE ekranı */
+    #custom-menu {
+        gap: 4px;
+    }
+
+    #custom-menu .custom-wrapper {
+        gap: 8px;
+        padding: 0 6px;
+        margin: 0;
+    }
+
+    #custom-menu .player-box {
+        padding: 8px 10px;
+        max-height: calc(100vh - 110px);
+        width: 46%;
+    }
+
+    #custom-menu .player-box h2 {
+        font-size: 12px !important;
+    }
+
+    #custom-menu .section-title {
+        font-size: 9px;
+        margin: 4px 0 3px 0;
+    }
+
+    #custom-menu .icon-card {
+        height: 46px !important;
+    }
+
+    #custom-menu .icon-card .emoji {
+        font-size: 18px;
+    }
+
+    #custom-menu .icon-card .label {
+        font-size: 8px;
+    }
+
+    #custom-menu > div:last-child {
+        gap: 10px;
+    }
+
+    /* Victory ekranı */
+    #victory-screen {
+        gap: 8px !important;
+    }
+
+    #victory-screen h1 {
+        font-size: 18px !important;
+    }
+
+    #victory-screen .winner-title {
+        font-size: 28px !important;
+    }
+
+    #victory-screen .victory-buttons {
+        gap: 10px;
+        margin-top: 6px;
+    }
+
+    #victory-screen .btn {
+        padding: 8px 18px !important;
+        font-size: 13px !important;
+    }
+
+    /* Pause ekranı */
+    #pause-menu {
+        gap: 12px;
+    }
+
+    /* Settings ekranı */
+    #settings-menu .map-select-box {
+        width: 280px !important;
+        padding: 12px 16px;
+    }
+
+    /* Shop ekranı */
+    #shop-menu h1 {
+        font-size: 20px !important;
+    }
+
+    #shop-menu .map-select-box {
+        max-height: calc(100vh - 110px) !important;
+        padding: 10px 14px;
+    }
+
+    #shop-menu .section-title {
+        font-size: 9px;
+        margin: 6px 0 3px 0;
+    }
+
+    #shop-menu .icon-card {
+        height: 60px !important;
+    }
+
+    #shop-menu .icon-card .emoji {
+        font-size: 18px;
+    }
+
+    #shop-menu .icon-card .label {
+        font-size: 8px;
+    }
+
+    /* Main menu */
+    #main-menu {
+        gap: 12px !important;
+    }
+
+    #main-menu h1 {
+        font-size: 22px !important;
+    }
+
+    #main-menu .menu-row {
+        gap: 8px;
+    }
+
+    #main-menu .icon-sub-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    /* In-game controls kiçilt */
+    #in-game-controls {
+        top: 6px;
+        right: 6px;
+        gap: 5px;
+    }
+
+    .icon-toggle-btn {
+        width: 34px;
+        height: 34px;
+        font-size: 14px;
+    }
+
+    /* Joystick-ləri kiçilt */
+    .mobile-joystick {
+        width: 100px;
+        height: 100px;
+        bottom: 16px;
+    }
+
+    .joystick-thumb {
+        width: 42px;
+        height: 42px;
+    }
+
+    #joystick-p1 { left: 14px; }
+    #joystick-p2 { right: 14px; }
+
+    .mobile-dash-btn {
+        width: 60px;
+        height: 60px;
+        bottom: 38px;
+        font-size: 10px;
+    }
+
+    #dash-btn-p1 { left: 120px; }
+    #dash-btn-p2 { right: 120px; }
+
+    /* HUD kiçilt */
+    #hud {
+        top: 6px;
+    }
+
+    .player-card {
+        padding: 6px 14px;
+        min-width: 130px;
+    }
+
+    .score {
+        font-size: 22px;
+    }
+
+    .controls {
+        font-size: 10px;
+    }
+}
