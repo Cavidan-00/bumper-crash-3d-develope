@@ -26,7 +26,8 @@ export const p2Joystick = { active: false, dirX: 0, dirZ: 0, magnitude: 0 };
 function setupJoystick(zoneEl, jsState) {
     if (!zoneEl) return;
     const thumbEl = zoneEl.querySelector('.joystick-thumb');
-    const MAX_DRAG = 42;
+    const MAX_DRAG = 55;
+    const MOBILE_INPUT_MULT = 0.75;
     let touchId = null;
 
     function moveThumb(clientX, clientY) {
@@ -43,7 +44,7 @@ function setupJoystick(zoneEl, jsState) {
         thumbEl.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
 
         jsState.active = true;
-        jsState.magnitude = clampedDist / MAX_DRAG;
+        jsState.magnitude = (clampedDist / MAX_DRAG) * MOBILE_INPUT_MULT;
         if (dist > 0.001) {
             jsState.dirX = dx / dist;
             jsState.dirZ = dy / dist;
@@ -116,6 +117,10 @@ export function updateMobileControlsVisibility() {
     const showP2 = state.gameMode !== 'ai';
     document.getElementById('joystick-p2').style.display = showP2 ? 'block' : 'none';
     document.getElementById('dash-btn-p2').style.display = showP2 ? 'flex' : 'none';
+
+    // Rejimə görə body class — CSS yerləşdirmə üçün
+    document.body.classList.toggle('mode-ai', state.gameMode === 'ai');
+    document.body.classList.toggle('mode-2p', state.gameMode === '2p');
 }
 
 // =====================================================================

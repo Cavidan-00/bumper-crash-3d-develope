@@ -349,13 +349,41 @@ h1 { color: #fff; font-size: 34px; margin: 0; text-shadow: 0 0 20px #6366f1; tex
     .icon-toggle-btn { width: 34px !important; height: 34px !important; font-size: 14px !important; }
 
     /* ---- Joysticks ---- */
-    .mobile-joystick { width: 110px !important; height: 110px !important; bottom: 14px !important; }
+    .mobile-joystick { width: 110px !important; height: 110px !important; }
     .joystick-thumb { width: 42px !important; height: 42px !important; }
-    #joystick-p1 { left: 14px !important; }
-    #joystick-p2 { right: 14px !important; }
-    .mobile-dash-btn { width: 62px !important; height: 62px !important; bottom: 36px !important; font-size: 10px !important; }
-    #dash-btn-p1 { left: 132px !important; }
-    #dash-btn-p2 { right: 132px !important; }
+    .mobile-dash-btn { width: 66px !important; height: 66px !important; font-size: 10px !important; }
+
+    /* ============ AI MODE (1 oyunçu) ============
+    Joystick SOL, DASH SAĞ — iki barmaqla rahat oyna */
+    body.mode-ai #joystick-p1 {
+        left: 14px !important;
+        right: auto !important;
+        bottom: 14px !important;
+    }
+    body.mode-ai #dash-btn-p1 {
+        right: 14px !important;
+        left: auto !important;
+        bottom: 30px !important;
+    }
+
+    /* ============ 2P MODE (iki oyunçu) ============
+    Hər oyunçunun öz tərəfi: joystick + dash yan-yana */
+    body.mode-2p #joystick-p1 {
+        left: 14px !important;
+        bottom: 14px !important;
+    }
+    body.mode-2p #dash-btn-p1 {
+        left: 132px !important;
+        bottom: 30px !important;
+    }
+    body.mode-2p #joystick-p2 {
+        right: 14px !important;
+        bottom: 14px !important;
+    }
+    body.mode-2p #dash-btn-p2 {
+        right: 132px !important;
+        bottom: 30px !important;
+    }
 
     /* ---- VICTORY ---- */
     #victory-screen { gap: 8px !important; padding: 10px !important; }
