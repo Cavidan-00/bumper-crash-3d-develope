@@ -149,3 +149,17 @@ window.addEventListener('orientationchange', () => {
     setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
     setTimeout(() => window.dispatchEvent(new Event('resize')), 400);
 });
+// Mobil tam ekran + landscape lock — ilk toxunuşda
+if (isTouchDevice) {
+    const enterFullscreen = () => {
+        const el = document.documentElement;
+        if (el.requestFullscreen && !document.fullscreenElement) {
+            el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+        }
+        if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+        }
+    };
+    document.addEventListener('touchstart', enterFullscreen, { once: true });
+    document.addEventListener('click', enterFullscreen, { once: true });
+}

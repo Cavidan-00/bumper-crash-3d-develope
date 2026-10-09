@@ -323,6 +323,10 @@ function updateInGameCamera() {
 
     const fallingPlayer = p1.isFalling ? p1 : (p2.isFalling ? p2 : null);
 
+    // Aspect ratio kompensasiyası — geniş ekranlarda (mobil yatay) kamera yaxınlaşsın
+    const aspect = window.innerWidth / window.innerHeight;
+    const zoomFactor = aspect > 1.8 ? Math.max(0.65, 1.8 / aspect) : 1.0;
+
     if (fallingPlayer) {
         timeScale = 0.2;
         targetPos = new THREE.Vector3(fallingPlayer.pos.x * 0.7, fallingPlayer.pos.y + 4.0, fallingPlayer.pos.z + 6.0);
@@ -332,8 +336,8 @@ function updateInGameCamera() {
         const midPoint = new THREE.Vector3().addVectors(p1.pos, p2.pos).multiplyScalar(0.5);
         const dist = p1.pos.distanceTo(p2.pos);
         const maxPlayerY = Math.max(p1.pos.y, p2.pos.y);
-        const camY = 13 + (dist * 0.35) + (maxPlayerY * 0.6);
-        const camZ = 15 + (dist * 0.45);
+        const camY = (13 + (dist * 0.35) + (maxPlayerY * 0.6)) * zoomFactor;
+        const camZ = (15 + (dist * 0.45)) * zoomFactor;
 
         targetPos = new THREE.Vector3(midPoint.x * 0.35, camY, camZ + (midPoint.z * 0.35));
         targetLook = new THREE.Vector3(midPoint.x * 0.6, maxPlayerY * 0.4, midPoint.z * 0.6);
