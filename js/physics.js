@@ -261,47 +261,8 @@ export function update() {
         p.obj.group.position.copy(p.pos);
     });
 
-    // Collisions between players
-    if (!p1.isFalling && !p2.isFalling) {
-        const dx = p2.pos.x - p1.pos.x;
-        const dz = p2.pos.z - p1.pos.z;
-        const dy = Math.abs(p2.pos.y - p1.pos.y);
-        const dist = Math.hypot(dx, dz);
-        const minDist = playerRadius * 2;
-
-        if (dy < playerRadius * 1.8 && dist < minDist && dist > 0) {
-            const nx = dx / dist;
-            const nz = dz / dist;
-            const overlap = minDist - dist;
-            p1.pos.x -= nx * overlap * 0.5;
-            p1.pos.z -= nz * overlap * 0.5;
-            p2.pos.x += nx * overlap * 0.5;
-            p2.pos.z += nz * overlap * 0.5;
-
-            const kx = p1.vel.x - p2.vel.x;
-            const kz = p1.vel.z - p2.vel.z;
-            const p = 2 * (nx * kx + nz * kz) / 2;
-
-            if (p > 0) {
-                p1.vel.x -= p * nx * 1.35;
-                p1.vel.z -= p * nz * 1.35;
-                p2.vel.x += p * nx * 1.35;
-                p2.vel.z += p * nz * 1.35;
-
-                if (collisionCooldown <= 0) {
-                    const impactIntensity = Math.min(p * 2.5, 2.0);
-                    playSound('hit', impactIntensity);
-                    shakeIntensity = Math.min(shakeIntensity + impactIntensity * 0.35, 0.8);
-
-                    const impactPos = new THREE.Vector3((p1.pos.x + p2.pos.x) * 0.5, playerRadius, (p1.pos.z + p2.pos.z) * 0.5);
-                    createImpactParticles(impactPos, impactIntensity);
-                    createShockwave(impactPos, impactIntensity);
-
-                    collisionCooldown = 10;
-                }
-            }
-        }
-    }
+    // Player-player collision
+    resolvePlayerCollision();
 
     p1.obj.group.position.copy(p1.pos);
     p2.obj.group.position.copy(p2.pos);
@@ -315,6 +276,93 @@ export function update() {
 
     // Camera (in-game)
     updateInGameCamera();
+}
+
+// =====================================================================
+// PLAYER-PLAYER COLLISION — perfect sphere-based
+// - 3D distance (bowl üçün düzgün)
+// - Falling player da daxildir (iç-içə keçmir)
+// - Tam üst-üstə halı da işlənir
+// =====================================================================
+function resolvePlayerCollision() {
+    // Hər ikisi falling-dirsə, toqquşma yoxdur
+    if (p1.isFalling && p2.isFalling) return;
+
+    const minDist = playerRadius * 2;
+    const minDistSq = minDist * minDist;
+    const oneFalling = p1.isFalling || p2.isFalling;
+
+    // Delta vektoru
+    const dx2D = p2.pos.x - p1.pos.x;
+    const dz2D = p2.pos.z - p1.pos.z;
+    const dy = p2.pos.y - p1.pos.y;
+
+    const dist2D = Math.hypot(dx2D, dz2D);
+    const dist3D = Math.hypot(dist2D, dy);
+    const dist3DSq = dist3D * dist3D;
+
+    // Toqquşma yoxdur
+    if (dist3DSq >= minDistSq) return;
+
+    // Horizontal normal vektoru
+    let nx, nz;
+    if (dist2D < 0.001) {
+        // Tam üst-üstə — təsadüfi istiqamətə ayır
+        const angle = Math.random() * Math.PI * 2;
+        nx = Math.cos(angle);
+        nz = Math.sin(angle);
+    } else {
+        nx = dx2D / dist2D;
+        nz = dz2D / dist2D;
+    }
+
+    // Düzgün sferik ayrılma miqdarı:
+    // 3D-də minDist qədər ayrılmaq üçün 2D-də nə qədər ayrılmalı?
+    const dySq = dy * dy;
+    const requiredDist2D = Math.sqrt(Math.max(0, minDistSq - dySq));
+    const overlap2D = requiredDist2D - dist2D;
+
+    if (overlap2D <= 0) return;
+
+    const half = overlap2D * 0.5;
+
+    // Pozisiya korreksiyası — yalnız X, Z
+    // (Y-ni terrain/surface funksiyası idarə edir, toxunmuruq)
+    p1.pos.x -= nx * half;
+    p1.pos.z -= nz * half;
+    p2.pos.x += nx * half;
+    p2.pos.z += nz * half;
+
+    // İmpuls — yalnız hər ikisi yerdədirsə
+    if (!oneFalling) {
+        const kx = p1.vel.x - p2.vel.x;
+        const kz = p1.vel.z - p2.vel.z;
+        const approaching = nx * kx + nz * kz;
+
+        if (approaching > 0) {
+            const impulse = approaching * 1.25;
+            p1.vel.x -= impulse * nx;
+            p1.vel.z -= impulse * nz;
+            p2.vel.x += impulse * nx;
+            p2.vel.z += impulse * nz;
+
+            if (collisionCooldown <= 0) {
+                const impactIntensity = Math.min(approaching * 2.5, 2.0);
+                playSound('hit', impactIntensity);
+                shakeIntensity = Math.min(shakeIntensity + impactIntensity * 0.35, 0.8);
+
+                const impactPos = new THREE.Vector3(
+                    (p1.pos.x + p2.pos.x) * 0.5,
+                    Math.max(p1.pos.y, p2.pos.y) * 0.6 + playerRadius * 0.4,
+                    (p1.pos.z + p2.pos.z) * 0.5
+                );
+                createImpactParticles(impactPos, impactIntensity);
+                createShockwave(impactPos, impactIntensity);
+
+                collisionCooldown = 10;
+            }
+        }
+    }
 }
 
 function updateInGameCamera() {

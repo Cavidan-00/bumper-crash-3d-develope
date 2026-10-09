@@ -73,20 +73,20 @@ export const glassesList = GLASSES_CATALOG.map(item => item.id);
 
 // --- EFFECT CATALOG ---
 export const EFFECT_CATALOG = [
-    { id: 'comet_trail', emoji: '☄️', name: 'Comet Trail', price: 180,
-      visual: { type: 'trail', color: 0x38bdf8, size: 0.28, poolSize: 24, spawnInterval: 0.032, fadeTime: 0.7 } },
-    { id: 'meteor_shell', emoji: '🪐', name: 'Meteor Shell', price: 220,
-      visual: { type: 'shapes', color: 0x9ca3af, count: 5, radius: 1.08, height: 0.15, speed: 1.0, shapeSize: 0.26 } },
-    { id: 'halo_rings', emoji: '💫', name: 'Halo Rings', price: 260,
-      visual: { type: 'rings', colors: [0xfacc15, 0xfbbf24, 0xfde68a], radius: 0.98, speed: 0.55, opacity: 0.7 } },
-    { id: 'volt_cage', emoji: '⚡', name: 'Volt Cage', price: 290,
-      visual: { type: 'cage', count: 7, radius: 1.2, color: 0x60a5fa } },
-    { id: 'prism_veil', emoji: '🔮', name: 'Prism Veil', price: 320,
-      visual: { type: 'veil', radius: 1.35 } },
-    { id: 'rainbow_ring', emoji: '🌈', name: 'Rainbow Ring', price: 300,
-      visual: { type: 'orbit', rainbow: true, count: 24, radius: 1.0, height: 0.0, speed: 0.8, size: 0.19 } },
-    { id: 'phantom_shift', emoji: '🫥', name: 'Phantom Shift', price: 380,
-      visual: { type: 'material', opacity: 0.16 } }
+    { id: 'plasma_aura', emoji: '⚡', name: 'Plasma Aura', price: 200,
+      visual: { type: 'aura' } },
+    { id: 'inferno_trail', emoji: '🔥', name: 'Inferno Trail', price: 220,
+      visual: { type: 'trail', poolSize: 36, spawnInterval: 0.022, fadeTime: 0.9 } },
+    { id: 'frost_crown', emoji: '❄️', name: 'Frost Crown', price: 240,
+      visual: { type: 'shapes' } },
+    { id: 'celestial_halo', emoji: '😇', name: 'Celestial Halo', price: 260,
+      visual: { type: 'rings' } },
+    { id: 'volt_cage', emoji: '🔋', name: 'Volt Cage', price: 290,
+      visual: { type: 'cage' } },
+    { id: 'nebula_veil', emoji: '🌌', name: 'Nebula Veil', price: 320,
+      visual: { type: 'veil' } },
+    { id: 'shadow_form', emoji: '👻', name: 'Shadow Form', price: 380,
+      visual: { type: 'material' } }
 ];
 
 // --- AI profilləri ---

@@ -63,9 +63,17 @@ import {
 // GAME STATE CHANGE
 // =====================================================================
 setOnGameStateChange((wasPlaying, isPlaying) => {
-    if (isPlaying && !wasPlaying) notifyGameplayStart();
-    else if (!isPlaying && wasPlaying) notifyGameplayStop();
-    updateMobileControlsVisibility();
+    try {
+        if (isPlaying && !wasPlaying) notifyGameplayStart();
+        else if (!isPlaying && wasPlaying) notifyGameplayStop();
+    } catch (e) {
+        console.warn('[state change] SDK error:', e);
+    }
+    try {
+        updateMobileControlsVisibility();
+    } catch (e) {
+        console.warn('[state change] UI error:', e);
+    }
 });
 
 // =====================================================================
@@ -90,6 +98,7 @@ function handleVictory() {
     const winnerName = p1Won ? t('custom.player1') : (state.gameMode === 'ai' ? getAILabel() : t('custom.player2'));
     const winnerColor = p1Won ? '#60a5fa' : (state.gameMode === 'ai' ? '#c084fc' : '#f87171');
     const winnerElem = document.getElementById('winner-text');
+    winnerElem.dataset.p1Won = String(p1Won);
     winnerElem.innerText = `${winnerName} ${t('victory.wins')}`;
     winnerElem.style.color = winnerColor;
     document.getElementById('hud').classList.add('hidden');

@@ -4,9 +4,9 @@
 // =====================================================================
 
 import { clearCosmeticPreviews } from './state.js';
-
+import { buildMap } from './world.js';
 import {
-    t, setLanguage, applyDataI18n, setOnLanguageChanged, getCurrentLang
+    t, setLanguage, applyDataI18n, setOnLanguageChanged, getCurrentLang, getLangFlag
 } from './i18n.js';
 import {
     state, saveShopData, saveProgressionData, clearAllProgress,
@@ -25,7 +25,11 @@ import {
 } from './sdk.js';
 import { refreshAccessories, randomizeAICosmetics } from './characters.js';
 import { resetFullGame } from './physics.js';
+
 import { updateMobileControlsVisibility } from './input.js';
+
+// AI rejiminə keçəndə P2-nin əvvəlki config-ini saxlayırıq
+let savedP2ConfigBeforeAI = null;
 
 // =====================================================================
 // GOLD & LEVEL UI
@@ -308,13 +312,49 @@ export function refreshVictoryAdButtons() {
 // APPLY TRANSLATIONS (bütün UI)
 // =====================================================================
 export function applyTranslations() {
+    // 1. Bütün data-i18n elementləri
     applyDataI18n();
+
+    // 2. Bayraq ikonunu cari dilə görə yenilə
+    const flagBox = document.querySelector('#btn-lang .flag-icon-box');
+    if (flagBox) flagBox.textContent = getLangFlag();
+
+    // 3. P2 başlıqlarını cari rejimə görə yenilə
+    const p2Title = document.getElementById('p2-title');
+    const p2HudName = document.getElementById('p2-hud-name');
+    const p2ControlsText = document.getElementById('p2-controls-text');
+
+    if (state.gameMode === 'ai') {
+        refreshAILabels();
+    } else {
+        if (p2Title) p2Title.innerText = t('custom.player2');
+        if (p2HudName) p2HudName.innerText = t('hud.player2');
+        if (p2ControlsText) p2ControlsText.innerText = t('hud.controlsP2');
+    }
+
+    // 4. Reklam düymələri
     refreshWatchAdGoldButton();
     refreshVictoryAdButtons();
+
+    // 5. Kosmetik gridlər
     refreshCosmeticGrids();
+
+    // 6. Shop açıqdırsa yenilə
     const shopMenu = document.getElementById('shop-menu');
     if (shopMenu && !shopMenu.classList.contains('hidden')) renderShop();
-    if (state.gameMode === 'ai') refreshAILabels();
+
+    // 7. Victory ekranı açıqdırsa winner mətnini yenilə
+    const victoryScreen = document.getElementById('victory-screen');
+    if (victoryScreen && !victoryScreen.classList.contains('hidden')) {
+        const winnerElem = document.getElementById('winner-text');
+        if (winnerElem && winnerElem.dataset.p1Won !== undefined) {
+            const p1Won = winnerElem.dataset.p1Won === 'true';
+            const winnerName = p1Won
+                ? t('custom.player1')
+                : (state.gameMode === 'ai' ? getAILabel() : t('custom.player2'));
+            winnerElem.innerText = `${winnerName} ${t('victory.wins')}`;
+        }
+    }
 }
 setOnLanguageChanged(applyTranslations);
 
@@ -341,11 +381,21 @@ function setupGridEvents(gridId, callback) {
 }
 
 // =====================================================================
+// DEV CHEAT HOOKS
+// =====================================================================
+window.__refreshGoldUI = refreshGoldUI;
+window.__refreshLevelUI = refreshLevelUI;
+window.__refreshCosmeticGrids = refreshCosmeticGrids;
+
+// =====================================================================
 // BÜTÜN EVENT LISTENER-LƏR
 // =====================================================================
 export function setupUIEventListeners() {
     // --- Grid-lər ---
-    setupGridEvents('map-grid', val => { state.currentMapType = val; });
+    setupGridEvents('map-grid', val => {
+        state.currentMapType = val;
+        buildMap(val);
+    });
     setupGridEvents('score-grid', val => { state.MAX_SCORE = parseInt(val, 10); });
     setupGridEvents('difficulty-grid', val => { state.aiDifficulty = val; refreshAILabels(); });
 
@@ -360,6 +410,15 @@ export function setupUIEventListeners() {
         const difficultySection = document.getElementById('difficulty-section');
 
         if (state.gameMode === 'ai') {
+            // P2-nin əvvəlki (oyunçunun öz) config-ini yadda saxla
+            if (!savedP2ConfigBeforeAI) {
+                savedP2ConfigBeforeAI = {
+                    hat: state.selectedConfig.p2.hat,
+                    glasses: state.selectedConfig.p2.glasses,
+                    effect: state.selectedConfig.p2.effect
+                };
+            }
+
             p2Box.style.borderColor = '#a855f7';
             p2Title.style.color = '#c084fc';
             p2HudName.style.color = '#c084fc';
@@ -370,6 +429,18 @@ export function setupUIEventListeners() {
             aiRandomBox.style.display = 'block';
             randomizeAICosmetics();
         } else {
+            // AI-dən gəlmişiksə — əvvəlki config-i geri qaytar
+            if (savedP2ConfigBeforeAI) {
+                state.selectedConfig.p2.hat = savedP2ConfigBeforeAI.hat;
+                state.selectedConfig.p2.glasses = savedP2ConfigBeforeAI.glasses;
+                state.selectedConfig.p2.effect = savedP2ConfigBeforeAI.effect;
+                savedP2ConfigBeforeAI = null;
+            }
+            // AI-nin random preview-lərini də təmizlə
+            state.previewState.p2Hat = null;
+            state.previewState.p2Glasses = null;
+            state.previewState.p2Effect = null;
+
             p2Box.style.borderColor = '#ef4444';
             p2Title.innerText = t('custom.player2');
             p2Title.style.color = '#f87171';
@@ -381,6 +452,7 @@ export function setupUIEventListeners() {
             p2Controls.style.display = 'block';
             aiRandomBox.style.display = 'none';
             refreshAccessories();
+            refreshCosmeticGrids();  // grid-i də yenilə (köhnə "TAP TO BUY" getsin)
         }
     });
 
@@ -403,6 +475,8 @@ export function setupUIEventListeners() {
         document.getElementById('custom-menu').classList.add('hidden');
         document.getElementById('setup-menu').classList.remove('hidden');
         clearCosmeticPreviews();
+        refreshAccessories();          // ← ƏLAVƏ ET
+        refreshCosmeticGrids();        // ← ƏLAVƏ ET (grid-də "TAP TO BUY" getsin)
     });
 
     document.getElementById('btn-back-main').addEventListener('click', () => {
@@ -414,13 +488,13 @@ export function setupUIEventListeners() {
     document.getElementById('btn-start').addEventListener('click', () => {
         playSound('click'); playBGM('game');
         clearCosmeticPreviews();
+        refreshAccessories();          // ← ƏLAVƏ ET (xarakter dərhal düzəlsin)
         setGameState('PLAYING');
         document.getElementById('custom-menu').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
         resetFullGame();
         document.getElementById('s1').innerText = '0';
         document.getElementById('s2').innerText = '0';
-        // Oyuna girəndən 2 saniyə sonra otomatik midgame ad
         setTimeout(() => {
             if (state.gameState === 'PLAYING') notifyGameSessionEnded();
         }, 3200);

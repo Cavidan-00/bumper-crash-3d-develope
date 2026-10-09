@@ -67,7 +67,18 @@ export function loadShopData() {
         if (raw) {
             const data = JSON.parse(raw);
             if (typeof data.coins === 'number') state.playerCoins = data.coins;
-            if (Array.isArray(data.owned)) state.ownedItems = data.owned;
+            if (Array.isArray(data.owned)) {
+                // Köhnə effekt ID-lərini yenilərinə çevir
+                const EFFECT_MIGRATION = {
+                    'comet_trail': 'inferno_trail',
+                    'meteor_shell': 'frost_crown',
+                    'halo_rings': 'celestial_halo',
+                    'prism_veil': 'nebula_veil',
+                    'rainbow_ring': 'nebula_veil',
+                    'phantom_shift': 'shadow_form'
+                };
+                state.ownedItems = [...new Set(data.owned.map(id => EFFECT_MIGRATION[id] || id))];
+            }
         }
     } catch (e) {
         // localStorage unavailable (private browsing) or corrupted - use defaults
@@ -135,5 +146,69 @@ export function setGameState(newState) {
     const wasPlaying = state.gameState === 'PLAYING';
     state.gameState = newState;
     const isPlaying = state.gameState === 'PLAYING';
-    onGameStateChange(wasPlaying, isPlaying);
+    try {
+        onGameStateChange(wasPlaying, isPlaying);
+    } catch (e) {
+        console.warn('[setGameState] callback error:', e);
+    }
 }
+// =====================================================================
+// DEV CHEATS — yalnız localhost / 127.0.0.1 üçün
+// =====================================================================
+if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    window.cheat = {
+        gold(n = 999999) {
+            state.playerCoins = n;
+            saveShopData();
+            console.log(`💰 Gold: ${n}`);
+            if (typeof window.__refreshGoldUI === 'function') window.__refreshGoldUI();
+        },
+        xp(n = 999999) {
+            state.totalXp = n;
+            saveProgressionData();
+            console.log(`⭐ XP: ${n}`);
+            if (typeof window.__refreshLevelUI === 'function') window.__refreshLevelUI();
+        },
+        level(n = 20) {
+            let xp = 0;
+            for (let i = 1; i < n; i++) xp += 50 + 25 * (i - 1);
+            state.totalXp = xp;
+            saveProgressionData();
+            console.log(`⭐ Level ${n} (XP: ${xp})`);
+            if (typeof window.__refreshLevelUI === 'function') window.__refreshLevelUI();
+        },
+        unlockAll() {
+            const allHats = ['cap','horns','duck','cat','bunny','sombrero','halo','ninja','viking','tophat','alien','wizard','crown','propeller'];
+            const allGlasses = ['sunglasses','nerd','mustache','mask','goggles','pirate_patch','monocle','clown','star','heart','vr','td'];
+            const allEffects = ['plasma_aura','inferno_trail','frost_crown','celestial_halo','volt_cage','nebula_veil','shadow_form'];
+            state.ownedItems = [...allHats, ...allGlasses, ...allEffects];
+            saveShopData();
+            console.log(`🎁 Unlocked ${state.ownedItems.length} items`);
+            if (typeof window.__refreshCosmeticGrids === 'function') window.__refreshCosmeticGrids();
+        },
+        reset() {
+            localStorage.clear();
+            location.reload();
+        },
+        help() {
+            console.log(`
+╔════════════════════════════════════════╗
+║         🎮 BUMPER CRASH CHEATS         ║
+╠════════════════════════════════════════╣
+║ cheat.gold()       → 999,999 gold      ║
+║ cheat.gold(500)    → 500 gold          ║
+║ cheat.xp()         → 999,999 XP        ║
+║ cheat.level(20)    → Level 20-ə çat   ║
+║ cheat.unlockAll()  → bütün kosmetikalar║
+║ cheat.reset()      → hər şeyi sıfırla  ║
+╚════════════════════════════════════════╝
+            `);
+        }
+    };
+    console.log('[DEV] Cheats aktivdir. Console-da `cheat.help()` yaz.');
+}
+
+// Nəzarətçi funksiyaları qeydə al (UI-də set olunacaq)
+window.__refreshGoldUI = null;
+window.__refreshLevelUI = null;
+window.__refreshCosmeticGrids = null;

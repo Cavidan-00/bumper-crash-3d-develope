@@ -44,238 +44,387 @@ function createGlowTexture() {
 const glowParticleTexture = createGlowTexture();
 
 // =====================================================================
-// EFFECT MAKERS
+// EFFECT MAKERS — PREMIUM
 // =====================================================================
 
-function makeOrbitParticles({ count, radius, height, speed, size, color, rainbow }) {
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(count * 3);
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    let colorAttr = null;
-    if (rainbow) {
-        colorAttr = new Float32Array(count * 3);
-        geo.setAttribute('color', new THREE.BufferAttribute(colorAttr, 3));
-    }
-    const mat = new THREE.PointsMaterial({
-        color: rainbow ? 0xffffff : color, size, sizeAttenuation: true,
-        map: glowParticleTexture, alphaTest: 0.01,
-        transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending,
-        depthWrite: false, vertexColors: !!rainbow
+// --- 1. PLASMA AURA ---
+function makePlasmaAura() {
+    const group = new THREE.Group();
+    const R = playerRadius;
+    const color = 0x38bdf8;
+
+    const innerGeo = new THREE.SphereGeometry(R * 1.12, 24, 24);
+    const innerMat = new THREE.MeshBasicMaterial({
+        color, transparent: true, opacity: 0.32,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide
     });
-    const points = new THREE.Points(geo, mat);
-    const baseAngles = [], heightJitter = [], radiusJitter = [];
-    for (let i = 0; i < count; i++) {
-        baseAngles.push((i / count) * Math.PI * 2);
-        heightJitter.push((Math.random() - 0.5) * 0.25);
-        radiusJitter.push((Math.random() - 0.5) * 0.12);
+    const inner = new THREE.Mesh(innerGeo, innerMat);
+    group.add(inner);
+
+    const shellGeo = new THREE.IcosahedronGeometry(R * 1.45, 2);
+    const shellMat = new THREE.MeshBasicMaterial({
+        color: 0x93c5fd, transparent: true, opacity: 0.35,
+        blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true
+    });
+    const shell = new THREE.Mesh(shellGeo, shellMat);
+    group.add(shell);
+
+    const orbCount = 4;
+    const orbGeo = new THREE.SphereGeometry(0.08, 12, 12);
+    const orbMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff, transparent: true, opacity: 0.95,
+        blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const orbs = [];
+    for (let i = 0; i < orbCount; i++) {
+        const orb = new THREE.Mesh(orbGeo, orbMat);
+        orbs.push({ mesh: orb, baseAngle: (i / orbCount) * Math.PI * 2, radius: R * 1.25, height: (Math.random() - 0.5) * 0.5, speed: 1.2 + Math.random() * 0.8 });
+        group.add(orb);
     }
-    points.userData.update = (elapsed) => {
-        const pos = geo.attributes.position.array;
-        for (let i = 0; i < count; i++) {
-            const a = baseAngles[i] + elapsed * speed;
-            const r = radius + radiusJitter[i];
-            pos[i * 3] = Math.cos(a) * r;
-            pos[i * 3 + 1] = height + heightJitter[i] + Math.sin(elapsed * 2.2 + i) * 0.06;
-            pos[i * 3 + 2] = Math.sin(a) * r;
-            if (rainbow) {
-                const hue = ((elapsed * 0.15) + i / count) % 1;
-                const c = new THREE.Color().setHSL(hue, 0.9, 0.65);
-                colorAttr[i * 3] = c.r; colorAttr[i * 3 + 1] = c.g; colorAttr[i * 3 + 2] = c.b;
-            }
+
+    const partCount = 20;
+    const partGeo = new THREE.BufferGeometry();
+    const partPos = new Float32Array(partCount * 3);
+    partGeo.setAttribute('position', new THREE.BufferAttribute(partPos, 3));
+    const partMat = new THREE.PointsMaterial({
+        color: 0x60a5fa, size: 0.12, sizeAttenuation: true, map: glowParticleTexture,
+        alphaTest: 0.01, transparent: true, opacity: 0.75,
+        blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const parts = new THREE.Points(partGeo, partMat);
+    const partData = [];
+    for (let i = 0; i < partCount; i++) {
+        partData.push({ angle: Math.random() * Math.PI * 2, radius: R * (1.3 + Math.random() * 0.3), height: (Math.random() - 0.5) * 1.2, speed: 0.8 + Math.random() * 1.5, phase: Math.random() * Math.PI * 2 });
+    }
+    group.add(parts);
+
+    group.userData.update = (elapsed) => {
+        inner.scale.setScalar(1 + Math.sin(elapsed * 3.5) * 0.08);
+        innerMat.opacity = 0.28 + Math.sin(elapsed * 3.5) * 0.08;
+        shell.rotation.y = elapsed * 0.4;
+        shell.rotation.x = Math.sin(elapsed * 0.5) * 0.2;
+        shell.scale.setScalar(1 + Math.sin(elapsed * 2 + 1) * 0.05);
+        orbs.forEach(o => {
+            const a = o.baseAngle + elapsed * o.speed;
+            o.mesh.position.set(Math.cos(a) * o.radius, o.height + Math.sin(elapsed * 2 + o.baseAngle) * 0.15, Math.sin(a) * o.radius);
+            o.mesh.scale.setScalar(1 + Math.sin(elapsed * 5 + o.baseAngle) * 0.2);
+        });
+        const arr = partGeo.attributes.position.array;
+        for (let i = 0; i < partCount; i++) {
+            const p = partData[i];
+            const t = (elapsed * p.speed + p.phase) % (Math.PI * 2);
+            const r = p.radius + Math.sin(t) * 0.15;
+            arr[i*3] = Math.cos(p.angle + elapsed * 0.3) * r;
+            arr[i*3+1] = p.height + Math.sin(t * 2) * 0.2;
+            arr[i*3+2] = Math.sin(p.angle + elapsed * 0.3) * r;
         }
-        geo.attributes.position.needsUpdate = true;
-        if (rainbow) geo.attributes.color.needsUpdate = true;
+        partGeo.attributes.position.needsUpdate = true;
     };
-    return points;
+    return group;
 }
 
-function makeCometHead(color) {
-    const geo = new THREE.SphereGeometry(0.24, 14, 14);
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false });
-    const mesh = new THREE.Mesh(geo, mat);
-    const ringGeo = new THREE.RingGeometry(0.3, 0.42, 24);
-    const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.5, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
-    const ring = new THREE.Mesh(ringGeo, ringMat);
-    mesh.add(ring);
-    mesh.userData.update = (elapsed) => {
-        mesh.scale.setScalar(1 + Math.sin(elapsed * 6) * 0.15);
-        ring.rotation.z = elapsed * 1.4;
-        ring.rotation.x = Math.PI / 2 + Math.sin(elapsed * 0.8) * 0.3;
-    };
-    return mesh;
-}
-
-function makeCometTrail(char, { color, size = 0.28, poolSize = 24, spawnInterval = 0.032, fadeTime = 0.7 }) {
+// --- 2. INFERNO TRAIL ---
+function makeInfernoTrail(char, { poolSize = 36, spawnInterval = 0.022, fadeTime = 0.9 }) {
     const geo = new THREE.BufferGeometry();
     const positions = new Float32Array(poolSize * 3);
     const colorArr = new Float32Array(poolSize * 3);
     geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     geo.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
     const mat = new THREE.PointsMaterial({
-        size, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01,
-        transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending,
-        depthWrite: false, depthTest: false, vertexColors: true
+        size: 0.35, sizeAttenuation: true, map: glowParticleTexture,
+        alphaTest: 0.01, transparent: true, opacity: 1.0,
+        blending: THREE.AdditiveBlending, depthWrite: false, vertexColors: true
     });
     const points = new THREE.Points(geo, mat);
     points.frustumCulled = false;
-    points.renderOrder = 999;
     scene.add(points);
 
-    const coolColor = new THREE.Color(color);
-    const hotColor = new THREE.Color(0xffffff);
+    const emberPool = 16;
+    const emberGeo = new THREE.BufferGeometry();
+    const emberPositions = new Float32Array(emberPool * 3).fill(-100);
+    emberGeo.setAttribute('position', new THREE.BufferAttribute(emberPositions, 3));
+    const emberMat = new THREE.PointsMaterial({
+        color: 0xffb347, size: 0.14, sizeAttenuation: true, map: glowParticleTexture,
+        alphaTest: 0.01, transparent: true, opacity: 0.95,
+        blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const embers = new THREE.Points(emberGeo, emberMat);
+    embers.frustumCulled = false;
+    scene.add(embers);
+
+    const headGeo = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMat = new THREE.MeshBasicMaterial({ color: 0xffa500, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false });
+    const head = new THREE.Mesh(headGeo, headMat);
+    scene.add(head);
+
+    const hot = new THREE.Color(0xffffff);
+    const mid = new THREE.Color(0xff6600);
+    const cool = new THREE.Color(0x991100);
     const ages = new Array(poolSize).fill(999);
-    let nextSlot = 0;
-    let sinceSpawn = 999;
-    let lastElapsed = 0;
+    const emberAges = new Array(emberPool).fill(999);
+    const emberVels = new Array(emberPool).fill(null).map(() => new THREE.Vector3());
+    let nextSlot = 0, emberSlot = 0, sinceSpawn = 999, sinceEmber = 999, lastElapsed = 0;
 
     return {
         update(elapsed) {
             const dt = Math.min(Math.max(elapsed - lastElapsed, 0), 0.1);
             lastElapsed = elapsed;
-            sinceSpawn += dt;
+            sinceSpawn += dt; sinceEmber += dt;
+            const p = char.group.position;
+            head.position.set(p.x, p.y - playerRadius * 0.5, p.z);
+            head.scale.setScalar(1 + Math.sin(elapsed * 8) * 0.15);
             if (sinceSpawn > spawnInterval) {
-                const p = char.group.position;
-                positions[nextSlot * 3] = p.x + (Math.random() - 0.5) * 0.28;
-                positions[nextSlot * 3 + 1] = p.y - playerRadius * 0.65 + (Math.random() - 0.5) * 0.18;
-                positions[nextSlot * 3 + 2] = p.z + (Math.random() - 0.5) * 0.28;
+                positions[nextSlot*3] = p.x + (Math.random() - 0.5) * 0.3;
+                positions[nextSlot*3+1] = p.y - playerRadius * 0.55 + (Math.random() - 0.5) * 0.2;
+                positions[nextSlot*3+2] = p.z + (Math.random() - 0.5) * 0.3;
                 ages[nextSlot] = 0;
                 nextSlot = (nextSlot + 1) % poolSize;
                 sinceSpawn = 0;
             }
+            if (sinceEmber > 0.06) {
+                emberPositions[emberSlot*3] = p.x + (Math.random() - 0.5) * 0.35;
+                emberPositions[emberSlot*3+1] = p.y - playerRadius * 0.4;
+                emberPositions[emberSlot*3+2] = p.z + (Math.random() - 0.5) * 0.35;
+                emberVels[emberSlot].set((Math.random() - 0.5) * 0.05, 0.05 + Math.random() * 0.04, (Math.random() - 0.5) * 0.05);
+                emberAges[emberSlot] = 0;
+                emberSlot = (emberSlot + 1) % emberPool;
+                sinceEmber = 0;
+            }
             for (let i = 0; i < poolSize; i++) {
-                if (ages[i] > fadeTime) {
-                    colorArr[i * 3] = colorArr[i * 3 + 1] = colorArr[i * 3 + 2] = 0;
-                    continue;
-                }
+                if (ages[i] > fadeTime) { colorArr[i*3] = colorArr[i*3+1] = colorArr[i*3+2] = 0; continue; }
                 ages[i] += dt;
-                const p = Math.min(ages[i] / fadeTime, 1);
-                const fade = 1 - p;
-                const mixed = hotColor.clone().lerp(coolColor, Math.min(p * 2.2, 1)).multiplyScalar(fade);
-                colorArr[i * 3] = mixed.r;
-                colorArr[i * 3 + 1] = mixed.g;
-                colorArr[i * 3 + 2] = mixed.b;
+                const t = Math.min(ages[i] / fadeTime, 1);
+                const fade = Math.pow(1 - t, 1.6);
+                const c = t < 0.25 ? hot.clone().lerp(mid, t / 0.25) : mid.clone().lerp(cool, (t - 0.25) / 0.75);
+                c.multiplyScalar(fade);
+                colorArr[i*3] = c.r; colorArr[i*3+1] = c.g; colorArr[i*3+2] = c.b;
             }
             geo.attributes.position.needsUpdate = true;
             geo.attributes.color.needsUpdate = true;
+            for (let i = 0; i < emberPool; i++) {
+                if (emberAges[i] > 1.5) { emberPositions[i*3+1] = -100; continue; }
+                emberAges[i] += dt;
+                emberPositions[i*3] += emberVels[i].x * dt * 50;
+                emberPositions[i*3+1] += emberVels[i].y * dt * 50;
+                emberPositions[i*3+2] += emberVels[i].z * dt * 50;
+                emberVels[i].y -= 0.0008 * dt * 50;
+            }
+            emberGeo.attributes.position.needsUpdate = true;
         },
         dispose() {
-            scene.remove(points);
-            geo.dispose();
-            mat.dispose();
+            scene.remove(points); scene.remove(embers); scene.remove(head);
+            geo.dispose(); mat.dispose(); emberGeo.dispose(); emberMat.dispose();
+            headGeo.dispose(); headMat.dispose();
         }
     };
 }
 
-function makeOrbitingShapes({ count, color, radius, height, speed, shapeSize = 0.24 }) {
+// --- 3. FROST CROWN ---
+function makeFrostCrown() {
     const group = new THREE.Group();
-    const geo = new THREE.IcosahedronGeometry(1, 0);
-    const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.6, roughness: 0.65, metalness: 0.2 });
-    const shapes = [];
-    for (let i = 0; i < count; i++) {
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.scale.setScalar(shapeSize * (0.75 + Math.random() * 0.6));
-        group.add(mesh);
-        shapes.push({
-            mesh, baseAngle: (i / count) * Math.PI * 2,
-            radiusOffset: (Math.random() - 0.5) * 0.35,
-            heightOffset: (Math.random() - 0.5) * 0.35,
-            spinAxis: new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize(),
-            spinSpeed: 1.5 + Math.random() * 2.5
-        });
-    }
-    group.userData.update = (elapsed) => {
-        shapes.forEach(s => {
-            const a = s.baseAngle + elapsed * speed;
-            const r = radius + s.radiusOffset;
-            const bob = Math.sin(elapsed * 1.3 + s.baseAngle) * 0.14;
-            s.mesh.position.set(Math.cos(a) * r, height + s.heightOffset + bob, Math.sin(a) * r);
-            s.mesh.rotateOnAxis(s.spinAxis, 0.05 * s.spinSpeed);
-        });
-    };
-    return group;
-}
-
-function makeHaloRings({ colors, radius = 0.98, tubeRadius = 0.026, speed = 0.5, opacity = 0.7 }) {
-    const group = new THREE.Group();
-    const tilts = [{ x: 0.35, z: 0 }, { x: -0.5, z: 1.1 }, { x: 1.4, z: -0.3 }];
-    const ringsData = [];
-    tilts.forEach((tilt, i) => {
-        const geo = new THREE.TorusGeometry(radius, tubeRadius, 8, 56);
-        const mat = new THREE.MeshBasicMaterial({ color: colors[i % colors.length], transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.rotation.x = tilt.x;
-        mesh.rotation.z = tilt.z;
-        group.add(mesh);
-        ringsData.push({ mesh, spinSpeed: speed * (i % 2 === 0 ? 1 : -1.4) });
+    const R = playerRadius;
+    const crystalGeo = new THREE.OctahedronGeometry(0.24, 0);
+    const crystalMat = new THREE.MeshStandardMaterial({
+        color: 0x93c5fd, emissive: 0x38bdf8, emissiveIntensity: 1.2,
+        metalness: 0.4, roughness: 0.15, transparent: true, opacity: 0.9
     });
+    const crystals = [];
+    for (let i = 0; i < 6; i++) {
+        const c = new THREE.Mesh(crystalGeo, crystalMat);
+        c.scale.setScalar(0.9 + Math.random() * 0.6);
+        group.add(c);
+        crystals.push({ mesh: c, baseAngle: (i / 6) * Math.PI * 2, radius: R * 1.4, height: (Math.random() - 0.5) * 0.6,
+            spinAxis: new THREE.Vector3(Math.random()-0.5, Math.random()-0.5, Math.random()-0.5).normalize(),
+            spinSpeed: 1.2 + Math.random() * 1.5, bobPhase: Math.random() * Math.PI * 2 });
+    }
+    const mistCount = 18;
+    const mistGeo = new THREE.BufferGeometry();
+    const mistPos = new Float32Array(mistCount * 3);
+    mistGeo.setAttribute('position', new THREE.BufferAttribute(mistPos, 3));
+    const mistMat = new THREE.PointsMaterial({
+        color: 0xbae6fd, size: 0.16, sizeAttenuation: true, map: glowParticleTexture,
+        alphaTest: 0.01, transparent: true, opacity: 0.7,
+        blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const mist = new THREE.Points(mistGeo, mistMat);
+    const mistData = [];
+    for (let i = 0; i < mistCount; i++) {
+        mistData.push({ angle: Math.random() * Math.PI * 2, radius: R * (1.1 + Math.random() * 0.5), height: (Math.random() - 0.5) * 1.4, speed: 0.5 + Math.random() * 1.2, phase: Math.random() * Math.PI * 2 });
+    }
+    group.add(mist);
+    const auraGeo = new THREE.IcosahedronGeometry(R * 1.15, 1);
+    const auraMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true });
+    const aura = new THREE.Mesh(auraGeo, auraMat);
+    group.add(aura);
     group.userData.update = (elapsed) => {
-        ringsData.forEach(r => { r.mesh.rotation.y = elapsed * r.spinSpeed; });
+        crystals.forEach(c => {
+            const a = c.baseAngle + elapsed * 0.7;
+            const bob = Math.sin(elapsed * 1.8 + c.bobPhase) * 0.18;
+            c.mesh.position.set(Math.cos(a) * c.radius, c.height + bob, Math.sin(a) * c.radius);
+            c.mesh.rotateOnAxis(c.spinAxis, 0.06 * c.spinSpeed);
+        });
+        const arr = mistGeo.attributes.position.array;
+        for (let i = 0; i < mistCount; i++) {
+            const p = mistData[i];
+            const t = elapsed * p.speed + p.phase;
+            const a = p.angle + elapsed * 0.5;
+            const r = p.radius + Math.sin(t) * 0.15;
+            arr[i*3] = Math.cos(a) * r;
+            arr[i*3+1] = p.height + Math.cos(t * 1.5) * 0.25;
+            arr[i*3+2] = Math.sin(a) * r;
+        }
+        mistGeo.attributes.position.needsUpdate = true;
+        aura.rotation.y = elapsed * 0.3;
+        aura.rotation.x = elapsed * 0.15;
+        auraMat.opacity = 0.12 + Math.sin(elapsed * 2.5) * 0.05;
     };
     return group;
 }
 
-function makeVoltCage({ count, radius, color }) {
+// --- 4. CELESTIAL HALO (elegant) ---
+function makeCelestialHalo() {
     const group = new THREE.Group();
-    const anchorCount = 6;
-    const anchors = [];
-    for (let i = 0; i < anchorCount; i++) {
-        const theta = (i / anchorCount) * Math.PI * 2 + Math.random() * 0.6;
-        const phi = Math.PI * 0.28 + Math.random() * Math.PI * 0.44;
-        anchors.push(new THREE.Vector3(
-            Math.sin(phi) * Math.cos(theta), Math.cos(phi) * 0.7, Math.sin(phi) * Math.sin(theta)
-        ).multiplyScalar(radius));
-    }
+    const R = playerRadius;
 
-    const hazeCount = 16;
+    // 4 halqa — müxtəlif radius, tilt, sürət
+    const ringSpecs = [
+        { radius: R * 1.55, tube: 0.045, color: 0xfef08a, tiltX: Math.PI / 2,        tiltZ: 0,    spinY: 0.6,  spinZ: 0.3,  opacity: 0.9 },
+        { radius: R * 1.35, tube: 0.05,  color: 0xfbbf24, tiltX: Math.PI / 2 + 0.55, tiltZ: 0.3,  spinY: -0.9, spinZ: 0.5,  opacity: 0.85 },
+        { radius: R * 1.15, tube: 0.055, color: 0xfde68a, tiltX: Math.PI / 2 - 0.7,  tiltZ: -0.4, spinY: 1.2,  spinZ: -0.6, opacity: 0.8 },
+        { radius: R * 0.95, tube: 0.04,  color: 0xfcd34d, tiltX: Math.PI / 2 + 1.2,  tiltZ: 0.5,  spinY: -0.7, spinZ: 0.8,  opacity: 0.75 }
+    ];
+
+    const rings = [];
+    ringSpecs.forEach(spec => {
+        const geo = new THREE.TorusGeometry(spec.radius, spec.tube, 16, 80);
+        const mat = new THREE.MeshBasicMaterial({
+            color: spec.color, transparent: true, opacity: spec.opacity,
+            blending: THREE.AdditiveBlending, depthWrite: false
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.x = spec.tiltX;
+        mesh.rotation.z = spec.tiltZ;
+        group.add(mesh);
+        rings.push({ mesh, mat, spinY: spec.spinY, spinZ: spec.spinZ, baseOpacity: spec.opacity });
+    });
+
+    // Nazik parıltı örtüyü — xarakter ətrafında yumşaq işıq
+    const glowGeo = new THREE.SphereGeometry(R * 1.6, 24, 24);
+    const glowMat = new THREE.MeshBasicMaterial({
+        color: 0xfef3c7, transparent: true, opacity: 0.08,
+        blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide
+    });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    group.add(glow);
+
+    // Azsaylı ulduz tozu — yalnız halqaların ətrafında
+    const sparkCount = 14;
+    const sparkGeo = new THREE.BufferGeometry();
+    const sparkPos = new Float32Array(sparkCount * 3);
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+    const sparkMat = new THREE.PointsMaterial({
+        color: 0xfef3c7, size: 0.13, sizeAttenuation: true, map: glowParticleTexture,
+        alphaTest: 0.01, transparent: true, opacity: 0.85,
+        blending: THREE.AdditiveBlending, depthWrite: false
+    });
+    const sparks = new THREE.Points(sparkGeo, sparkMat);
+    const sparkData = [];
+    for (let i = 0; i < sparkCount; i++) {
+        sparkData.push({
+            angle: Math.random() * Math.PI * 2,
+            radius: R * (1.1 + Math.random() * 0.5),
+            height: (Math.random() - 0.5) * 1.2,
+            speed: 0.4 + Math.random() * 0.8,
+            phase: Math.random() * Math.PI * 2
+        });
+    }
+    group.add(sparks);
+
+    group.userData.update = (elapsed) => {
+        // Halqalar — iki oxda fırlanır, yumşaq opacity pulse
+        rings.forEach((r, i) => {
+            r.mesh.rotation.y = elapsed * r.spinY;
+            r.mesh.rotation.z += r.spinZ * 0.008;
+            r.mat.opacity = r.baseOpacity * (0.85 + Math.sin(elapsed * 2.2 + i * 1.3) * 0.15);
+        });
+
+        // Yumşaq işıq örtüyü nəbz edir
+        glowMat.opacity = 0.06 + Math.sin(elapsed * 1.8) * 0.03;
+        glow.scale.setScalar(1 + Math.sin(elapsed * 1.5) * 0.04);
+
+        // Ulduz tozu — yalnız yumşaq orbit
+        const arr = sparkGeo.attributes.position.array;
+        for (let i = 0; i < sparkCount; i++) {
+            const p = sparkData[i];
+            const a = p.angle + elapsed * p.speed;
+            const bob = Math.sin(elapsed * 1.4 + p.phase) * 0.25;
+            arr[i * 3] = Math.cos(a) * p.radius;
+            arr[i * 3 + 1] = p.height + bob;
+            arr[i * 3 + 2] = Math.sin(a) * p.radius;
+        }
+        sparkGeo.attributes.position.needsUpdate = true;
+    };
+
+    return group;
+}
+
+// --- 5. VOLT CAGE (improved) ---
+function makeImprovedVoltCage() {
+    const group = new THREE.Group();
+    const R = playerRadius;
+    const auraGeo = new THREE.IcosahedronGeometry(R * 1.25, 2);
+    const auraMat = new THREE.MeshBasicMaterial({ color: 0x60a5fa, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true });
+    const aura = new THREE.Mesh(auraGeo, auraMat);
+    group.add(aura);
+    const hazeCount = 24;
     const hazeGeo = new THREE.BufferGeometry();
-    hazeGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(hazeCount * 3), 3));
-    const hazeMat = new THREE.PointsMaterial({
-        color, size: 0.07, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01,
-        transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending, depthWrite: false
-    });
+    const hazePos = new Float32Array(hazeCount * 3);
+    hazeGeo.setAttribute('position', new THREE.BufferAttribute(hazePos, 3));
+    const hazeMat = new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.09, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false });
     const haze = new THREE.Points(hazeGeo, hazeMat);
-    const hazeAngle = [], hazeRadius = [], hazeHeight = [];
+    const hazeData = [];
     for (let i = 0; i < hazeCount; i++) {
-        hazeAngle.push(Math.random() * Math.PI * 2);
-        hazeRadius.push(radius * (0.45 + Math.random() * 0.55));
-        hazeHeight.push((Math.random() - 0.5) * 1.3);
+        hazeData.push({ angle: Math.random() * Math.PI * 2, radius: R * (0.8 + Math.random() * 0.7), height: (Math.random() - 0.5) * 1.6, speed: 0.6 + Math.random() * 1.5, phase: Math.random() * Math.PI * 2 });
     }
     group.add(haze);
-
-    const SEGMENTS = 7;
+    const SEGMENTS = 8;
+    const boltCount = 6;
     const bolts = [];
-    for (let i = 0; i < count; i++) {
+    const anchors = [];
+    for (let i = 0; i < 6; i++) {
+        const theta = (i / 6) * Math.PI * 2 + Math.random() * 0.5;
+        const phi = Math.PI * 0.25 + Math.random() * Math.PI * 0.5;
+        anchors.push(new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.cos(phi) * 0.9, Math.sin(phi) * Math.sin(theta)).multiplyScalar(R * 1.3));
+    }
+    for (let i = 0; i < boltCount; i++) {
         const coreGeo = new THREE.BufferGeometry();
         const glowGeo = new THREE.BufferGeometry();
         coreGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SEGMENTS * 3), 3));
         glowGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(SEGMENTS * 3), 3));
-
         const coreLine = new THREE.Line(coreGeo, new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
-        const glowLine = new THREE.Line(glowGeo, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
-        const glowDots = new THREE.Points(coreGeo, new THREE.PointsMaterial({
-            color, size: 0.16, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01,
-            transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false
-        }));
-        coreLine.visible = false; glowLine.visible = false; glowDots.visible = false;
-        group.add(coreLine, glowLine, glowDots);
-        bolts.push({ coreGeo, glowGeo, coreLine, glowLine, glowDots, timer: Math.random() * 0.5, on: false });
+        const glowLine = new THREE.Line(glowGeo, new THREE.LineBasicMaterial({ color: 0x3b82f6, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending, depthWrite: false }));
+        const dots = new THREE.Points(coreGeo, new THREE.PointsMaterial({ color: 0x93c5fd, size: 0.2, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false }));
+        coreLine.visible = glowLine.visible = dots.visible = false;
+        group.add(coreLine, glowLine, dots);
+        bolts.push({ coreGeo, glowGeo, coreLine, glowLine, dots, timer: Math.random() * 0.6, on: false });
     }
-
     let lastElapsed = 0;
     group.userData.update = (elapsed) => {
         const dt = Math.min(Math.max(elapsed - lastElapsed, 0), 0.1);
         lastElapsed = elapsed;
-        group.rotation.y = elapsed * 0.2;
-
-        const hp = hazeGeo.attributes.position.array;
+        group.rotation.y = elapsed * 0.15;
+        auraMat.opacity = 0.08 + Math.sin(elapsed * 4) * 0.04;
+        aura.rotation.y = elapsed * 0.4;
+        const hArr = hazeGeo.attributes.position.array;
         for (let i = 0; i < hazeCount; i++) {
-            const a = hazeAngle[i] + elapsed * 0.35;
-            hp[i * 3] = Math.cos(a) * hazeRadius[i];
-            hp[i * 3 + 1] = hazeHeight[i] + Math.sin(elapsed * 1.6 + i) * 0.06;
-            hp[i * 3 + 2] = Math.sin(a) * hazeRadius[i];
+            const p = hazeData[i];
+            const a = p.angle + elapsed * p.speed;
+            const r = p.radius + Math.sin(elapsed * 2 + p.phase) * 0.1;
+            hArr[i*3] = Math.cos(a) * r;
+            hArr[i*3+1] = p.height + Math.sin(elapsed * 1.6 + i) * 0.08;
+            hArr[i*3+2] = Math.sin(a) * r;
         }
         hazeGeo.attributes.position.needsUpdate = true;
-
         bolts.forEach(b => {
             b.timer -= dt;
             if (b.timer <= 0) {
@@ -288,30 +437,24 @@ function makeVoltCage({ count, radius, color }) {
                     const glow = b.glowGeo.attributes.position.array;
                     for (let p = 0; p < SEGMENTS; p++) {
                         const t = p / (SEGMENTS - 1);
-                        const endpoint = (p === 0 || p === SEGMENTS - 1);
-                        const jCore = endpoint ? 0 : 0.14;
-                        const jGlow = endpoint ? 0 : 0.24;
+                        const isEnd = (p === 0 || p === SEGMENTS - 1);
+                        const jC = isEnd ? 0 : 0.16;
+                        const jG = isEnd ? 0 : 0.26;
                         const bx = a.x + (bnd.x - a.x) * t, by = a.y + (bnd.y - a.y) * t, bz = a.z + (bnd.z - a.z) * t;
-                        core[p * 3] = bx + (Math.random() - 0.5) * jCore;
-                        core[p * 3 + 1] = by + (Math.random() - 0.5) * jCore;
-                        core[p * 3 + 2] = bz + (Math.random() - 0.5) * jCore;
-                        glow[p * 3] = bx + (Math.random() - 0.5) * jGlow;
-                        glow[p * 3 + 1] = by + (Math.random() - 0.5) * jGlow;
-                        glow[p * 3 + 2] = bz + (Math.random() - 0.5) * jGlow;
+                        core[p*3] = bx + (Math.random() - 0.5) * jC;
+                        core[p*3+1] = by + (Math.random() - 0.5) * jC;
+                        core[p*3+2] = bz + (Math.random() - 0.5) * jC;
+                        glow[p*3] = bx + (Math.random() - 0.5) * jG;
+                        glow[p*3+1] = by + (Math.random() - 0.5) * jG;
+                        glow[p*3+2] = bz + (Math.random() - 0.5) * jG;
                     }
                     b.coreGeo.attributes.position.needsUpdate = true;
                     b.glowGeo.attributes.position.needsUpdate = true;
-                    b.coreLine.visible = true;
-                    b.glowLine.visible = true;
-                    b.glowDots.visible = true;
-                    b.on = true;
-                    b.timer = 0.12;
+                    b.coreLine.visible = b.glowLine.visible = b.dots.visible = true;
+                    b.on = true; b.timer = 0.1;
                 } else {
-                    b.coreLine.visible = false;
-                    b.glowLine.visible = false;
-                    b.glowDots.visible = false;
-                    b.on = false;
-                    b.timer = 0.12 + Math.random() * 0.4;
+                    b.coreLine.visible = b.glowLine.visible = b.dots.visible = false;
+                    b.on = false; b.timer = 0.1 + Math.random() * 0.35;
                 }
             }
         });
@@ -319,37 +462,115 @@ function makeVoltCage({ count, radius, color }) {
     return group;
 }
 
-function makePrismVeil({ radius = 1.35 }) {
+// --- 6. NEBULA VEIL ---
+function makeNebulaVeil() {
     const group = new THREE.Group();
-    const outerGeo = new THREE.RingGeometry(radius * 0.62, radius, 64);
-    const outerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+    const R = playerRadius;
+    const outerGeo = new THREE.SphereGeometry(R * 1.35, 32, 32);
+    const outerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.14, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
     const outer = new THREE.Mesh(outerGeo, outerMat);
-    outer.rotation.x = Math.PI / 2.4;
     group.add(outer);
-
-    const innerGeo = new THREE.RingGeometry(radius * 0.32, radius * 0.4, 48);
-    const innerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.45, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
-    const inner = new THREE.Mesh(innerGeo, innerMat);
-    inner.rotation.x = -Math.PI / 3;
-    group.add(inner);
-
+    const ringGeo = new THREE.RingGeometry(R * 1.5, R * 1.9, 64);
+    const ringMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2;
+    group.add(ring);
+    const ring2Geo = new THREE.RingGeometry(R * 1.4, R * 1.75, 64);
+    const ring2Mat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+    ring2.rotation.x = Math.PI / 2.3;
+    ring2.rotation.z = 0.4;
+    group.add(ring2);
+    const mistCount = 30;
+    const mistGeo = new THREE.BufferGeometry();
+    const mistPos = new Float32Array(mistCount * 3);
+    const mistCol = new Float32Array(mistCount * 3);
+    mistGeo.setAttribute('position', new THREE.BufferAttribute(mistPos, 3));
+    mistGeo.setAttribute('color', new THREE.BufferAttribute(mistCol, 3));
+    const mistMat = new THREE.PointsMaterial({ size: 0.24, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false, vertexColors: true });
+    const mist = new THREE.Points(mistGeo, mistMat);
+    const mistData = [];
+    for (let i = 0; i < mistCount; i++) {
+        mistData.push({ angle: Math.random() * Math.PI * 2, radius: R * (1.1 + Math.random() * 0.6), height: (Math.random() - 0.5) * 1.8, speed: 0.3 + Math.random() * 0.8, phase: Math.random() * Math.PI * 2, hueOffset: Math.random() });
+    }
+    group.add(mist);
+    const tmpColor = new THREE.Color();
     group.userData.update = (elapsed) => {
-        const hue = (elapsed * 0.16) % 1;
-        outerMat.color.setHSL(hue, 0.85, 0.65);
-        innerMat.color.setHSL((hue + 0.5) % 1, 0.85, 0.65);
-        outer.rotation.z = elapsed * 0.55;
-        inner.rotation.z = -elapsed * 0.85;
+        const hue = (elapsed * 0.08) % 1;
+        outerMat.color.setHSL(hue, 0.7, 0.6);
+        outerMat.opacity = 0.1 + Math.sin(elapsed * 1.8) * 0.05;
+        ring.rotation.z = elapsed * 0.5;
+        ringMat.color.setHSL((hue + 0.33) % 1, 0.8, 0.6);
+        ringMat.opacity = 0.45 + Math.sin(elapsed * 2) * 0.15;
+        ring2.rotation.z = -elapsed * 0.7 + 0.4;
+        ring2Mat.color.setHSL((hue + 0.66) % 1, 0.8, 0.6);
+        ring2Mat.opacity = 0.35 + Math.sin(elapsed * 2.4) * 0.12;
+        const arr = mistGeo.attributes.position.array;
+        for (let i = 0; i < mistCount; i++) {
+            const p = mistData[i];
+            const a = p.angle + elapsed * p.speed;
+            const r = p.radius + Math.sin(elapsed * 1.5 + p.phase) * 0.2;
+            arr[i*3] = Math.cos(a) * r;
+            arr[i*3+1] = p.height + Math.cos(elapsed * 1.2 + p.phase) * 0.35;
+            arr[i*3+2] = Math.sin(a) * r;
+            tmpColor.setHSL((hue + p.hueOffset) % 1, 0.85, 0.65);
+            mistCol[i*3] = tmpColor.r; mistCol[i*3+1] = tmpColor.g; mistCol[i*3+2] = tmpColor.b;
+        }
+        mistGeo.attributes.position.needsUpdate = true;
+        mistGeo.attributes.color.needsUpdate = true;
     };
     return group;
 }
 
-function makeGhostRim(color) {
-    const geo = new THREE.SphereGeometry(playerRadius * 1.06, 24, 24);
-    const mat = new THREE.MeshBasicMaterial({
-        color, transparent: true, opacity: 0.4, side: THREE.BackSide,
-        blending: THREE.AdditiveBlending, depthWrite: false
-    });
-    return new THREE.Mesh(geo, mat);
+// --- 7. SHADOW FORM ---
+function makeShadowForm(char) {
+    const group = new THREE.Group();
+    const R = playerRadius;
+    const echoGeo = new THREE.SphereGeometry(R * 0.98, 24, 24);
+    const echoMat = new THREE.MeshBasicMaterial({ color: 0xa855f7, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
+    const echo = new THREE.Mesh(echoGeo, echoMat);
+    group.add(echo);
+    const rimGeo = new THREE.SphereGeometry(R * 1.08, 24, 24);
+    const rimMat = new THREE.MeshBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.BackSide });
+    const rim = new THREE.Mesh(rimGeo, rimMat);
+    group.add(rim);
+    const wispCount = 20;
+    const wispGeo = new THREE.BufferGeometry();
+    const wispPos = new Float32Array(wispCount * 3);
+    wispGeo.setAttribute('position', new THREE.BufferAttribute(wispPos, 3));
+    const wispMat = new THREE.PointsMaterial({ color: 0x7e22ce, size: 0.22, sizeAttenuation: true, map: glowParticleTexture, alphaTest: 0.01, transparent: true, opacity: 0.7, blending: THREE.AdditiveBlending, depthWrite: false });
+    const wisps = new THREE.Points(wispGeo, wispMat);
+    const wispData = [];
+    for (let i = 0; i < wispCount; i++) {
+        wispData.push({ angle: Math.random() * Math.PI * 2, radius: R * (1.05 + Math.random() * 0.4), height: (Math.random() - 0.5) * 1.5, speed: 0.4 + Math.random() * 1.0, phase: Math.random() * Math.PI * 2 });
+    }
+    group.add(wisps);
+    let echoHistory = [];
+    let lastElapsed = 0;
+    group.userData.update = (elapsed) => {
+        const dt = Math.min(Math.max(elapsed - lastElapsed, 0), 0.1);
+        lastElapsed = elapsed;
+        echoHistory.push({ pos: char.group.position.clone(), time: elapsed });
+        while (echoHistory.length > 0 && elapsed - echoHistory[0].time > 0.35) echoHistory.shift();
+        if (echoHistory.length > 0) {
+            const old = echoHistory[0];
+            echo.position.copy(old.pos).sub(char.group.position);
+            echoMat.opacity = 0.28 * (1 - (elapsed - old.time) / 0.35);
+        }
+        rimMat.opacity = 0.3 + Math.sin(elapsed * 3) * 0.1;
+        rim.scale.setScalar(1 + Math.sin(elapsed * 2) * 0.06);
+        const arr = wispGeo.attributes.position.array;
+        for (let i = 0; i < wispCount; i++) {
+            const p = wispData[i];
+            const a = p.angle + elapsed * p.speed;
+            const r = p.radius + Math.sin(elapsed * 1.8 + p.phase) * 0.15;
+            arr[i*3] = Math.cos(a) * r;
+            arr[i*3+1] = p.height + Math.sin(elapsed * 1.4 + p.phase) * 0.3;
+            arr[i*3+2] = Math.sin(a) * r;
+        }
+        wispGeo.attributes.position.needsUpdate = true;
+    };
+    return group;
 }
 
 // =====================================================================
@@ -961,27 +1182,27 @@ export function setEffect(char, effectId) {
     if (!cfg) return;
     const v = cfg.visual;
 
-    if (v.type === 'trail') {
-        char.worldEffect = makeCometTrail(char, v);
-        char.effectGroup.add(makeCometHead(v.color));
+    if (v.type === 'aura') {
+        char.effectGroup.add(makePlasmaAura());
+    } else if (v.type === 'trail') {
+        char.worldEffect = makeInfernoTrail(char, v);
     } else if (v.type === 'shapes') {
-        char.effectGroup.add(makeOrbitingShapes(v));
+        char.effectGroup.add(makeFrostCrown());
     } else if (v.type === 'rings') {
-        char.effectGroup.add(makeHaloRings(v));
+        char.effectGroup.add(makeCelestialHalo());
     } else if (v.type === 'cage') {
-        char.effectGroup.add(makeVoltCage(v));
+        char.effectGroup.add(makeImprovedVoltCage());
     } else if (v.type === 'veil') {
-        char.effectGroup.add(makePrismVeil(v));
-    } else if (v.type === 'orbit') {
-        char.effectGroup.add(makeOrbitParticles(v));
+        char.effectGroup.add(makeNebulaVeil());
     } else if (v.type === 'material') {
-        if (v.opacity !== undefined) {
-            char.bodyMesh.material.transparent = true;
-            char.bodyMesh.material.opacity = v.opacity;
-            char.bodyMesh.material.depthWrite = false;
-            char.bodyMesh.material.side = THREE.DoubleSide;
-            char.effectGroup.add(makeGhostRim(char.baseColor));
-        }
+        // Shadow Form — body translucent + emissive purple
+        char.bodyMesh.material.transparent = true;
+        char.bodyMesh.material.opacity = 0.55;
+        char.bodyMesh.material.depthWrite = false;
+        char.bodyMesh.material.side = THREE.DoubleSide;
+        char.bodyMesh.material.emissive.setHex(0x6b21a8);
+        char.bodyMesh.material.emissiveIntensity = 0.4;
+        char.effectGroup.add(makeShadowForm(char));
     }
 }
 

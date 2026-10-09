@@ -160,3 +160,21 @@ export function applyDataI18n() {
     });
     document.documentElement.lang = currentLang;
 }
+// =====================================================================
+// BAYRAQ İKONLARI
+// =====================================================================
+const LANG_FLAGS = {
+    en: '🇺🇸',
+    es: '🇪🇸',
+    tr: '🇹🇷',
+    pt: '🇧🇷'
+};
+
+export function getLangFlag(lang) {
+    return LANG_FLAGS[lang || currentLang] || '🌐';
+}
+
+// Cari dilin kodunu qaytar (bayraq üçün)
+export function getLangCode() {
+    return currentLang;
+}
