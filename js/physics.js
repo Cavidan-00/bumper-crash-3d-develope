@@ -21,6 +21,9 @@ import {
     arenaRadius, squareSize, playerRadius
 } from './config.js';
 
+// Frame-rate normalization clock
+const frameClock = new THREE.Clock();
+
 // =====================================================================
 // PLAYER STATE
 // =====================================================================
@@ -177,6 +180,14 @@ export function handlePlayer2Input() {
 export function update() {
     incrementIdleTimer();
 
+    // ============================================================
+    // FRAME-RATE NORMALIZATION
+    // 60Hz, 120Hz, 30Hz cihazlarda eyni real sürət
+    // ============================================================
+    const rawDelta = frameClock.getDelta();
+    const frameScale = Math.min(Math.max(rawDelta * 60, 0.5), 3.0);
+    timeScale *= frameScale;
+    
     // Propeller
     [p1Char, p2Char].forEach(c => {
         if (c.propellerBlade) {
