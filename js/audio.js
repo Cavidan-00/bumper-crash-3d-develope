@@ -91,8 +91,19 @@ function initAudio() {
     }
 }
 
+// Səs throttle — eyni səsin çox tez təkrarlanmasının qarşısını alır
+// Səs throttle — eyni səsin çox tez təkrarlanmasının qarşısını alır
+const soundThrottle = {};
+
 export function playSound(type, intensity = 1.0) {
     if (state.adInProgress || state.sfxMuted) return;
+
+    // Throttle: eyni səs tipi üçün minimum interval (ms)
+    const perfNow = performance.now();
+    const throttleMs = type === 'dash' ? 150 : (type === 'hit' ? 80 : 30);
+    if (soundThrottle[type] && perfNow - soundThrottle[type] < throttleMs) return;
+    soundThrottle[type] = perfNow;
+
     initAudio();
     if (!audioCtx) return;
     const now = audioCtx.currentTime;

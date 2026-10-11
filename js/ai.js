@@ -11,7 +11,6 @@ import {
     MOBILE_SPEED_FACTOR
 } from './config.js';
 import { state } from './state.js';
-import { playSound } from './audio.js';
 import { p1, p2, getTimeScale, getScores } from './physics.js';
 import { isTouchDevice } from './input.js';
 
@@ -299,6 +298,5 @@ function tryDash(stateName, profile, ctx) {
 
     p2.vel.addScaledVector(dirToTarget, DASH_FORCE * profile.dashPower);
     p2.dashCd = DASH_COOLDOWN * profile.dashCooldownMult;
-    playSound('dash');
     restingTimer = profile.restingAfterDash;
 }
