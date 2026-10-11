@@ -26,8 +26,8 @@ export const p2Joystick = { active: false, dirX: 0, dirZ: 0, magnitude: 0 };
 function setupJoystick(zoneEl, jsState) {
     if (!zoneEl) return;
     const thumbEl = zoneEl.querySelector('.joystick-thumb');
-    const MAX_DRAG = 55;
-    const MOBILE_INPUT_MULT = 0.75;
+    const MAX_DRAG = 60;
+    const MOBILE_INPUT_MULT = 0.50;
     let touchId = null;
 
     function moveThumb(clientX, clientY) {
@@ -44,7 +44,8 @@ function setupJoystick(zoneEl, jsState) {
         thumbEl.style.transform = `translate(calc(-50% + ${tx}px), calc(-50% + ${ty}px))`;
 
         jsState.active = true;
-        jsState.magnitude = (clampedDist / MAX_DRAG) * MOBILE_INPUT_MULT;
+        const rawMag = clampedDist / MAX_DRAG;
+        jsState.magnitude = Math.pow(rawMag, 1.6) * MOBILE_INPUT_MULT;
         if (dist > 0.001) {
             jsState.dirX = dx / dist;
             jsState.dirZ = dy / dist;

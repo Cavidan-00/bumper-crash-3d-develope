@@ -139,18 +139,28 @@ export function handlePlayer2Input() {
     if (p2.isFalling) return;
 
     let p2InputX = 0, p2InputZ = 0, p2Mag = 1;
+
+    // Klaviatura
     if (keys['ArrowUp']) p2InputZ -= 1;
     if (keys['ArrowDown']) p2InputZ += 1;
     if (keys['ArrowLeft']) p2InputX -= 1;
     if (keys['ArrowRight']) p2InputX += 1;
 
+    // Joystick (klaviatura basılmırsa)
     if (p2InputX === 0 && p2InputZ === 0 && p2Joystick.active) {
         p2InputX = p2Joystick.dirX;
         p2InputZ = p2Joystick.dirZ;
         p2Mag = p2Joystick.magnitude;
     }
-    p2.vel.x += p2InputX * ACCEL * p2Mag;
-    p2.vel.z += p2InputZ * ACCEL * p2Mag;
+
+    if (p2InputX !== 0 || p2InputZ !== 0) {
+        // Normalize et — diaqonal sürət bug-ı düzəldir
+        const length = Math.hypot(p2InputX, p2InputZ);
+        const dirX = p2InputX / length;
+        const dirZ = p2InputZ / length;
+        p2.vel.x += dirX * ACCEL * timeScale * p2Mag;
+        p2.vel.z += dirZ * ACCEL * timeScale * p2Mag;
+    }
 
     if (keys['Enter'] && p2.dashCd <= 0) {
         const dir = new THREE.Vector3(p2.vel.x, 0, p2.vel.z).normalize();
