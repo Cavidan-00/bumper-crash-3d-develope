@@ -10,6 +10,9 @@ export const DASH_FORCE = 0.48;
 export const DASH_COOLDOWN = 120;
 export const GRAVITY = 0.045;
 
+// --- Mobil balans ---
+export const MOBILE_SPEED_FACTOR = 0.55;
+
 export const arenaRadius = 8;
 export const squareSize = 14;
 export const playerRadius = 0.8;

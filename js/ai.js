@@ -1,13 +1,19 @@
 // =====================================================================
 // AI — CPU RƏQİBİN DÜŞÜNCƏ MƏNTİQİ
-// AI oyunçuların state-ini (p1, p2) oxuyur, öz state-ini saxlayır.
 // =====================================================================
 
 import * as THREE from 'three';
-import { AI_PROFILES, ACCEL, DASH_FORCE, DASH_COOLDOWN, arenaRadius, squareSize } from './config.js';
+import {
+    AI_PROFILES, ACCEL, DASH_FORCE, DASH_COOLDOWN,
+    arenaRadius, squareSize, MOBILE_SPEED_FACTOR
+} from './config.js';
 import { state } from './state.js';
 import { playSound } from './audio.js';
 import { p1, p2, getTimeScale } from './physics.js';
+import { isTouchDevice } from './input.js';
+
+// Mobil-də AI sürətini azalt — player ilə balans
+const AI_SPEED_FACTOR = isTouchDevice ? MOBILE_SPEED_FACTOR : 1.0;
 
 // --- AI daxili state ---
 let idleTimer = 0;
@@ -101,7 +107,7 @@ export function updateAI() {
                 } else {
                     moveDir.add(dirToPlayer);
                     if (p2.dashCd <= 0 && distToP1 < 5.0 && Math.random() < profile.dashUseChance) {
-                        p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * 1.05);
+                        p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * 1.05 * AI_SPEED_FACTOR);
                         p2.dashCd = DASH_COOLDOWN;
                         playSound('dash');
                     }
@@ -110,7 +116,7 @@ export function updateAI() {
             case 'CHARGING_COMBO':
                 moveDir.add(dirToPlayer);
                 if (p2.dashCd <= 0 && distToP1 < 4.8 && Math.random() < profile.dashUseChance) {
-                    p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * 1.1);
+                    p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * 1.1 * AI_SPEED_FACTOR);
                     p2.dashCd = DASH_COOLDOWN;
                     playSound('dash');
                 }
@@ -128,14 +134,14 @@ export function updateAI() {
     }
 
     if (p2.dashCd <= 0 && !isNearEdge && distToP1 < 3.5 && Math.random() < profile.dashChanceRandom) {
-        p2.vel.addScaledVector(dirToPlayer, DASH_FORCE);
+        p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * AI_SPEED_FACTOR);
         p2.dashCd = DASH_COOLDOWN;
         playSound('dash');
     }
 
     if (moveDir.lengthSq() > 0) {
         moveDir.normalize();
-        const speedMult = profile.speedMult;
+        const speedMult = profile.speedMult * AI_SPEED_FACTOR;   // ← mobil faktor burada
         p2.vel.x += moveDir.x * ACCEL * speedMult;
         p2.vel.z += moveDir.z * ACCEL * speedMult;
     }
