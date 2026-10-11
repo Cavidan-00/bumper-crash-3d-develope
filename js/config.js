@@ -94,32 +94,87 @@ export const EFFECT_CATALOG = [
 
 // --- AI profilləri ---
 export const AI_PROFILES = {
+    // ============================================================
+    // EASY — yavaş, səhv edən, öyrənən oyunçular üçün
+    // ============================================================
     easy: {
-        predictLead: 0,
-        speedMult: 0.55,
-        dashChanceRandom: 0.01,
-        dashUseChance: 0.35,
-        reactionMultiplier: 1.9,
-        edgeAwareness: 0.55,
-        mistakeChance: 0.30
+        // Sürət
+        speedMult: 0.65,
+        predictLead: 0.0,              // proqnoz YOXDUR
+
+        // Reaksiya
+        reactionMultiplier: 1.5,
+        reactionMin: 0.30,
+        reactionMax: 0.55,
+        reactionChance: 0.40,          // 40% — yeni vəziyyət üçün reaksiya gecikməsi
+
+        // Dash
+        dashChance: 0.20,
+        dashRange: 2.2,                // yalnız çox yaxın məsafədə
+        dashPower: 0.85,
+        dashCooldownMult: 1.5,
+        restingAfterDash: 0.6,
+
+        // Awareness
+        edgeAwareness: 0.5,            // kənardan pis qaçır
+        mistakeChance: 0.30,           // tez-tez səhv
+
+        // Taktika
+        useBait: false,
+        useCombos: false,
+        chaseVulnerable: false         // player fall-dadırsa qovmur
     },
+
+    // ============================================================
+    // NORMAL — balanslı, bəzən taktiki
+    // ============================================================
     normal: {
-        predictLead: 0.5,
-        speedMult: 0.75,
-        dashChanceRandom: 0.02,
-        dashUseChance: 0.7,
-        reactionMultiplier: 1.35,
-        edgeAwareness: 0.8,
-        mistakeChance: 0.12
-    },
-    hard: {
-        predictLead: 1.0,
-        speedMult: 0.92,
-        dashChanceRandom: 0.035,
-        dashUseChance: 1.0,
+        speedMult: 0.85,
+        predictLead: 0.30,             // bir az proqnoz
+
         reactionMultiplier: 1.0,
+        reactionMin: 0.18,
+        reactionMax: 0.35,
+        reactionChance: 0.25,
+
+        dashChance: 0.45,
+        dashRange: 3.0,
+        dashPower: 1.0,
+        dashCooldownMult: 1.0,
+        restingAfterDash: 0.4,
+
+        edgeAwareness: 0.8,
+        mistakeChance: 0.12,
+
+        useBait: false,
+        useCombos: true,
+        chaseVulnerable: true
+    },
+
+    // ============================================================
+    // HARD — sürətli, ağıllı, təcavüzkar
+    // ============================================================
+    hard: {
+        speedMult: 1.0,
+        predictLead: 0.55,             // yaxşı proqnoz
+
+        reactionMultiplier: 0.7,
+        reactionMin: 0.10,
+        reactionMax: 0.20,
+        reactionChance: 0.15,          // demək olar həmişə hazır
+
+        dashChance: 0.75,
+        dashRange: 3.8,
+        dashPower: 1.1,
+        dashCooldownMult: 0.85,
+        restingAfterDash: 0.25,
+
         edgeAwareness: 1.0,
-        mistakeChance: 0
+        mistakeChance: 0.03,
+
+        useBait: true,                 // hiyləgər
+        useCombos: true,
+        chaseVulnerable: true
     }
 };
 

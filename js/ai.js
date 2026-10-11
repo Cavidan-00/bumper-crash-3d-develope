@@ -1,148 +1,304 @@
 // =====================================================================
-// AI — CPU RƏQİBİN DÜŞÜNCƏ MƏNTİQİ
+// AI — CPU RƏQİBİN MƏNTİQİ
+// 3 fərqli şəxsiyyət + rubber-banding + proqnoz + taktika
 // =====================================================================
 
 import * as THREE from 'three';
 import {
-    AI_PROFILES, ACCEL, DASH_FORCE, DASH_COOLDOWN,
-    arenaRadius, squareSize, MOBILE_SPEED_FACTOR
+    AI_PROFILES,
+    ACCEL, DASH_FORCE, DASH_COOLDOWN,
+    arenaRadius, squareSize, playerRadius,
+    MOBILE_SPEED_FACTOR
 } from './config.js';
 import { state } from './state.js';
 import { playSound } from './audio.js';
-import { p1, p2, getTimeScale } from './physics.js';
+import { p1, p2, getTimeScale, getScores } from './physics.js';
 import { isTouchDevice } from './input.js';
 
 // Mobil-də AI sürətini azalt — player ilə balans
-const AI_SPEED_FACTOR = isTouchDevice ? MOBILE_SPEED_FACTOR : 1.0;
+const AI_MOBILE_FACTOR = isTouchDevice ? MOBILE_SPEED_FACTOR : 1.0;
 
-// --- AI daxili state ---
+// =====================================================================
+// DAXILI STATE
+// =====================================================================
 let idleTimer = 0;
-let aiComboState = 'APPROACH';
-let aiStateTimer = 0;
-let aiMistakeDir = new THREE.Vector3(1, 0, 0);
+let comboState = 'IDLE';
+let stateTimer = 0;
+let reactionTimer = 0;
+let mistakeDir = new THREE.Vector3(1, 0, 0);
+let playerVelBuffer = new THREE.Vector3();
+let predictionActive = false;
+let restingTimer = 0;
+let rubberBandFactor = 1.0;
 
-export function incrementIdleTimer() { idleTimer += 0.03; }
+// =====================================================================
+// YARDIMÇI
+// =====================================================================
+function randomRange(min, max) {
+    return min + Math.random() * (max - min);
+}
+
+// Rubber-banding — oyun marağını qoruyur
+function computeRubberBand() {
+    const { s1, s2 } = getScores();
+    const diff = s1 - s2;   // + = player irəlidə, - = AI irəlidə
+    if (diff <= -3) return 0.70;   // AI çox irəlidə → yumşal
+    if (diff <= -1) return 0.85;
+    if (diff >= 3)  return 1.15;   // player irəlidə → AI çalışsın
+    if (diff >= 1)  return 1.05;
+    return 1.0;
+}
+
+// Player kənara yaxındır? (vulnerable)
+function isPlayerVulnerable() {
+    const distFromCenter = Math.hypot(p1.pos.x, p1.pos.z);
+    const maxDist = state.currentMapType === 'square' ? squareSize / 2 : arenaRadius;
+    return (maxDist - distFromCenter) < 2.0;
+}
+
+// =====================================================================
+// PUBLIC API
+// =====================================================================
+export function incrementIdleTimer() {
+    idleTimer += 0.03;
+    if (reactionTimer > 0) reactionTimer -= 0.016;
+    if (restingTimer > 0) restingTimer -= 0.016;
+}
 
 export function resetAIState() {
     idleTimer = 0;
-    aiComboState = 'APPROACH';
-    aiStateTimer = 0;
-    aiMistakeDir.set(1, 0, 0);
+    comboState = 'IDLE';
+    stateTimer = 0;
+    reactionTimer = 0;
+    mistakeDir.set(1, 0, 0);
+    predictionActive = false;
+    restingTimer = 0;
+    rubberBandFactor = 1.0;
 }
 
+// =====================================================================
+// ƏSAS UPDATE
+// =====================================================================
 export function updateAI() {
     if (p2.isFalling) return;
 
-    const profile = AI_PROFILES[state.aiDifficulty] || AI_PROFILES.hard;
+    const profile = AI_PROFILES[state.aiDifficulty] || AI_PROFILES.normal;
     const timeScale = getTimeScale();
 
+    // Rubber-banding (yumşaq interpolasiya)
+    const targetRB = computeRubberBand();
+    rubberBandFactor += (targetRB - rubberBandFactor) * 0.02;
+
+    // Effektiv dəyərlər
+    const speedMult = profile.speedMult * AI_MOBILE_FACTOR * rubberBandFactor;
+    const dashChance = profile.dashChance * rubberBandFactor;
+    const mistakeChance = profile.mistakeChance * (2 - rubberBandFactor);
+
+    // Player məlumatı
+    const playerDist = Math.hypot(p1.pos.x - p2.pos.x, p1.pos.z - p2.pos.z);
+    const playerVulnerable = isPlayerVulnerable();
+
+    // Proqnozlaşdırma — reaksiya gecikməsindən sonra
+    if (reactionTimer <= 0) {
+        playerVelBuffer.copy(p1.vel);
+        predictionActive = true;
+    }
+    const predictedPos = predictionActive
+        ? p1.pos.clone().addScaledVector(playerVelBuffer, profile.predictLead * 15)
+        : p1.pos.clone();
+
+    // Hədəf vektorları
+    const toTarget = new THREE.Vector3().subVectors(predictedPos, p2.pos);
+    toTarget.y = 0;
+    const distToTarget = toTarget.length();
+    const dirToTarget = distToTarget > 0.01
+        ? toTarget.clone().normalize()
+        : new THREE.Vector3(0, 0, 1);
+    const perpRight = new THREE.Vector3(-dirToTarget.z, 0, dirToTarget.x);
+    const perpLeft  = new THREE.Vector3( dirToTarget.z, 0, -dirToTarget.x);
+
+    // Kənar təhlükəsi
     const distFromCenter = Math.hypot(p2.pos.x, p2.pos.z);
-    const maxDist = state.currentMapType === 'square' ? (squareSize / 2) : arenaRadius;
-    const edgeMargin = (state.currentMapType === 'bowl' ? 0.4 : 1.8) * profile.edgeAwareness;
-    const edgeDangerZone = maxDist - edgeMargin;
-    const isNearEdge = distFromCenter > edgeDangerZone;
+    const maxDist = state.currentMapType === 'square' ? squareSize / 2 : arenaRadius;
+    const edgeMargin = profile.edgeAwareness * 2.0;
+    const edgeDistance = maxDist - distFromCenter;
+    const isNearEdge = edgeDistance < edgeMargin;
 
-    const targetPos = p1.pos.clone().addScaledVector(p1.vel, 0.4 * 10 * profile.predictLead);
-    const toPlayer = new THREE.Vector3().subVectors(targetPos, p2.pos);
-    toPlayer.y = 0;
-    const distToP1 = toPlayer.length();
-    const dirToPlayer = toPlayer.clone().normalize();
+    // ============================================================
+    // VƏZİYYƏT MAŞINI
+    // ============================================================
+    stateTimer -= 0.016 * timeScale;
+    if (stateTimer <= 0) {
+        comboState = decideNextState(profile, {
+            playerDist, playerVulnerable, isNearEdge, mistakeChance
+        });
+        stateTimer = pickStateDuration(comboState, profile);
+        if (Math.random() < profile.reactionChance) {
+            reactionTimer = randomRange(profile.reactionMin, profile.reactionMax);
+        }
+    }
 
-    const perpRight = new THREE.Vector3(-dirToPlayer.z, 0, dirToPlayer.x);
-    const perpLeft = new THREE.Vector3(dirToPlayer.z, 0, -dirToPlayer.x);
-
+    // ============================================================
+    // HƏRƏKƏT
+    // ============================================================
     const moveDir = new THREE.Vector3(0, 0, 0);
 
-    aiStateTimer -= 0.016 * timeScale;
-    if (aiStateTimer <= 0) {
-        const p1DistFromCenter = Math.hypot(p1.pos.x, p1.pos.z);
-        const p1NearEdge = p1DistFromCenter > (maxDist - 2.5);
-        const rand = Math.random();
-
-        if (Math.random() < profile.mistakeChance) {
-            aiComboState = 'CONFUSED';
-            aiMistakeDir.set(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).normalize();
-            aiStateTimer = 0.4 + Math.random() * 0.5;
-        } else if (p1NearEdge && distToP1 < 6.5) {
-            aiComboState = 'CHARGING_COMBO';
-            aiStateTimer = 1.0;
-        } else if (distToP1 < 4.0 && rand < 0.45) {
-            aiComboState = 'FEINT_DASH';
-            aiStateTimer = 0.85;
-        } else {
-            if (rand < 0.35) {
-                aiComboState = 'APPROACH';
-                aiStateTimer = 1.0 + Math.random() * 0.8;
-            } else if (rand < 0.65) {
-                aiComboState = 'FLANK_CIRCLE';
-                aiStateTimer = 1.2 + Math.random() * 0.6;
-            } else if (rand < 0.85) {
-                aiComboState = 'FEINT_DASH';
-                aiStateTimer = 0.85;
-            } else {
-                aiComboState = 'RETREAT_TACTICAL';
-                aiStateTimer = 0.7;
-            }
-        }
-        aiStateTimer *= profile.reactionMultiplier;
-    }
-
-    if (isNearEdge) {
+    // Kritik: kənardan qaç
+    if (isNearEdge && comboState !== 'CONFUSED') {
         const centerDir = new THREE.Vector3(-p2.pos.x, 0, -p2.pos.z).normalize();
-        moveDir.addScaledVector(centerDir, 2.2 * profile.edgeAwareness);
+        const urgency = 1 - (edgeDistance / edgeMargin);
+        moveDir.addScaledVector(centerDir, 1.5 + urgency * 2.0);
     } else {
-        switch (aiComboState) {
-            case 'APPROACH':
-                moveDir.add(dirToPlayer);
-                const zigzag = Math.sin(idleTimer * 7) * 0.35;
-                moveDir.addScaledVector(perpRight, zigzag);
-                break;
-            case 'FLANK_CIRCLE':
-                moveDir.addScaledVector(dirToPlayer, 0.45);
-                moveDir.addScaledVector(perpRight, 0.85);
-                break;
-            case 'FEINT_DASH':
-                if (aiStateTimer > 0.4) {
-                    moveDir.addScaledVector(perpLeft, 1.1);
-                } else {
-                    moveDir.add(dirToPlayer);
-                    if (p2.dashCd <= 0 && distToP1 < 5.0 && Math.random() < profile.dashUseChance) {
-                        p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * 1.05 * AI_SPEED_FACTOR);
-                        p2.dashCd = DASH_COOLDOWN;
-                        playSound('dash');
-                    }
-                }
-                break;
-            case 'CHARGING_COMBO':
-                moveDir.add(dirToPlayer);
-                if (p2.dashCd <= 0 && distToP1 < 4.8 && Math.random() < profile.dashUseChance) {
-                    p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * 1.1 * AI_SPEED_FACTOR);
-                    p2.dashCd = DASH_COOLDOWN;
-                    playSound('dash');
-                }
-                break;
-            case 'RETREAT_TACTICAL':
-                moveDir.addScaledVector(dirToPlayer, -0.65);
-                moveDir.addScaledVector(perpRight, 0.3);
-                break;
-            case 'CONFUSED':
-                moveDir.add(aiMistakeDir);
-                break;
-            default:
-                moveDir.add(dirToPlayer);
-        }
+        moveDir.copy(applyStateMovement(comboState, {
+            dirToTarget, perpRight, perpLeft, playerDist, idleTimer, mistakeDir
+        }));
     }
 
-    if (p2.dashCd <= 0 && !isNearEdge && distToP1 < 3.5 && Math.random() < profile.dashChanceRandom) {
-        p2.vel.addScaledVector(dirToPlayer, DASH_FORCE * AI_SPEED_FACTOR);
-        p2.dashCd = DASH_COOLDOWN;
-        playSound('dash');
-    }
+    // Dash
+    tryDash(comboState, profile, {
+        playerDist, playerVulnerable, isNearEdge, dirToTarget, dashChance
+    });
 
-    if (moveDir.lengthSq() > 0) {
+    // Tətbiq
+    if (moveDir.lengthSq() > 0.001) {
         moveDir.normalize();
-        const speedMult = profile.speedMult * AI_SPEED_FACTOR;   // ← mobil faktor burada
         p2.vel.x += moveDir.x * ACCEL * speedMult;
         p2.vel.z += moveDir.z * ACCEL * speedMult;
     }
+}
+
+// =====================================================================
+// VƏZİYYƏT SEÇİMİ
+// =====================================================================
+function decideNextState(profile, info) {
+    const { playerDist, playerVulnerable, isNearEdge, mistakeChance } = info;
+
+    // Səhv — yalnız easy/normal
+    if (Math.random() < mistakeChance) {
+        mistakeDir.set(Math.random() * 2 - 1, 0, Math.random() * 2 - 1).normalize();
+        return 'CONFUSED';
+    }
+
+    // Player fall-dadır, kənara yaxındır → tamam!
+    if (playerVulnerable && profile.chaseVulnerable && playerDist < 8) {
+        return 'FINISHER';
+    }
+
+    // Özü kənardadır → retreat
+    if (isNearEdge) return 'RETREAT';
+
+    // Çox yaxın → yan tərəfə
+    if (playerDist < 1.8) return 'CIRCLE';
+
+    // Uzaq → yaxınlaş
+    if (playerDist > 5) return 'APPROACH';
+
+    // Orta məsafə — taktiki
+    const r = Math.random();
+    if (profile.useBait && r < 0.30) return 'BAIT';
+    if (profile.useCombos && r < 0.55) return 'COMBO_SETUP';
+    if (r < 0.75) return 'CIRCLE';
+    return 'APPROACH';
+}
+
+function pickStateDuration(stateName, profile) {
+    const base = {
+        IDLE: 0.5,
+        APPROACH: 1.2,
+        CIRCLE: 1.5,
+        FINISHER: 1.0,
+        RETREAT: 0.8,
+        BAIT: 0.9,
+        COMBO_SETUP: 1.1,
+        CONFUSED: randomRange(0.4, 1.0)
+    };
+    return (base[stateName] || 1.0) * profile.reactionMultiplier;
+}
+
+// =====================================================================
+// VƏZİYYƏTƏ UYĞUN HƏRƏKƏT
+// =====================================================================
+function applyStateMovement(stateName, ctx) {
+    const { dirToTarget, perpRight, playerDist, idleTimer } = ctx;
+    const moveDir = new THREE.Vector3(0, 0, 0);
+
+    switch (stateName) {
+        case 'IDLE':
+            moveDir.addScaledVector(perpRight, Math.sin(idleTimer) * 0.3);
+            break;
+
+        case 'APPROACH':
+            moveDir.add(dirToTarget);
+            moveDir.addScaledVector(perpRight, Math.sin(idleTimer * 5) * 0.25);
+            break;
+
+        case 'CIRCLE':
+            moveDir.addScaledVector(perpRight, 1.0);
+            moveDir.addScaledVector(dirToTarget, 0.25);
+            break;
+
+        case 'FINISHER':
+            moveDir.add(dirToTarget);
+            if (playerDist > 3) {
+                moveDir.addScaledVector(perpRight, Math.sin(idleTimer * 3) * 0.4);
+            }
+            break;
+
+        case 'RETREAT':
+            moveDir.addScaledVector(dirToTarget, -0.7);
+            moveDir.addScaledVector(perpRight, 0.3);
+            break;
+
+        case 'BAIT': {
+            const phase = Math.sin(idleTimer * 2.5);
+            moveDir.addScaledVector(dirToTarget, phase > 0 ? 0.5 : -0.9);
+            moveDir.addScaledVector(perpRight, 0.4);
+            break;
+        }
+
+        case 'COMBO_SETUP':
+            moveDir.addScaledVector(perpRight, 1.2);
+            moveDir.addScaledVector(dirToTarget, 0.3);
+            break;
+
+        case 'CONFUSED':
+            moveDir.add(ctx.mistakeDir);
+            break;
+
+        default:
+            moveDir.add(dirToTarget);
+    }
+
+    return moveDir;
+}
+
+// =====================================================================
+// DASH MƏNTİQİ
+// =====================================================================
+function tryDash(stateName, profile, ctx) {
+    if (p2.dashCd > 0 || restingTimer > 0) return;
+
+    const { playerDist, playerVulnerable, isNearEdge, dirToTarget, dashChance } = ctx;
+    const inRange = playerDist < profile.dashRange;
+
+    let shouldDash = false;
+
+    if (stateName === 'FINISHER' && inRange && playerVulnerable) {
+        shouldDash = Math.random() < dashChance * 1.5;
+    } else if (stateName === 'COMBO_SETUP' && inRange) {
+        shouldDash = Math.random() < dashChance * 1.2;
+    } else if (stateName === 'APPROACH' && inRange && playerDist > 2.5) {
+        shouldDash = Math.random() < dashChance * 0.6;
+    } else if (stateName === 'CIRCLE' && playerDist < 3.0) {
+        shouldDash = Math.random() < dashChance * 0.8;
+    } else if (inRange && playerDist < 4.0) {
+        shouldDash = Math.random() < dashChance * 0.4;
+    }
+
+    if (!shouldDash || isNearEdge) return;
+
+    p2.vel.addScaledVector(dirToTarget, DASH_FORCE * profile.dashPower);
+    p2.dashCd = DASH_COOLDOWN * profile.dashCooldownMult;
+    playSound('dash');
+    restingTimer = profile.restingAfterDash;
 }

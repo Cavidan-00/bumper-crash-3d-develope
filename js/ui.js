@@ -5,6 +5,7 @@
 
 import { clearCosmeticPreviews } from './state.js';
 import { buildMap } from './world.js';
+import { resetAIState } from './ai.js';
 import {
     t, setLanguage, applyDataI18n, setOnLanguageChanged, getCurrentLang, getLangFlag
 } from './i18n.js';
@@ -488,16 +489,15 @@ export function setupUIEventListeners() {
     document.getElementById('btn-start').addEventListener('click', () => {
         playSound('click'); playBGM('game');
         clearCosmeticPreviews();
-        refreshAccessories();          // ← ƏLAVƏ ET (xarakter dərhal düzəlsin)
+        refreshAccessories();
         setGameState('PLAYING');
         document.getElementById('custom-menu').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
         resetFullGame();
+        resetAIState();              // ← ƏLAVƏ ET
         document.getElementById('s1').innerText = '0';
         document.getElementById('s2').innerText = '0';
-        setTimeout(() => {
-            if (state.gameState === 'PLAYING') notifyGameSessionEnded();
-        }, 3200);
+        // ...
     });
 
     // --- Pause ---
@@ -658,12 +658,10 @@ export function setupUIEventListeners() {
         document.getElementById('victory-screen').classList.add('hidden');
         document.getElementById('hud').classList.remove('hidden');
         resetFullGame();
+        resetAIState();              // ← ƏLAVƏ ET
         document.getElementById('s1').innerText = '0';
         document.getElementById('s2').innerText = '0';
-        // Rematch-da da midgame ad
-        setTimeout(() => {
-            if (state.gameState === 'PLAYING') notifyGameSessionEnded();
-        }, 2000);
+        // ...
     });
 
     document.getElementById('btn-main-menu').addEventListener('click', () => {
